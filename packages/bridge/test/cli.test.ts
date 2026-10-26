@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { runBridge } from '../src/cli.js';
-import { helloResponder, startMockPlatform, type MockPlatform } from './mock-platform.js';
+import { runBridge } from '../src/cli.ts';
+import { helloResponder, startMockPlatform, type MockPlatform } from './mock-platform.ts';
 
 describe('runBridge', () => {
   it('参数错误返回 2 并打印用法', () => {

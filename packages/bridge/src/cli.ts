@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 import { realpathSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { parseArgs } from './config.js';
-import { Bridge } from './bridge.js';
+import { parseArgs } from './config.ts';
+import { Bridge } from './bridge.ts';
 
 export interface BridgeIO {
   log(line: string): void;
@@ -24,29 +24,26 @@ export function runBridge(argv: readonly string[], io: BridgeIO): number {
     io.error(USAGE);
     return 2;
   }
-  const bridge = new Bridge({
-    url: config.url,
-    key: config.key,
-    name: config.name,
-    agentId: config.agentId,
-    deadlineMs: config.deadlineMs,
-    command: config.command,
-    demo: config.demo,
-    log: (l) => io.log(`[bridge] ${l}`),
-    onFatal: (reason) => {
-      io.error(`[bridge] ${reason}`);
-      process.exitCode = 1;
-    },
-  });
-  bridge.start();
   let exiting = false;
   const shutdown = (): void => {
     if (exiting) return;
     exiting = true;
     bridge.stop();
-    const killer = setTimeout(() => process.exit(0), 100);
+    // 宽限窗 ≥ ChildRunner 的 5s SIGKILL + 余量；unref 后正常路径靠事件循环自然排空退出
+    const killer = setTimeout(() => process.exit(process.exitCode ?? 0), 5500);
     killer.unref?.();
   };
+  const bridge = new Bridge({
+    url: config.url, key: config.key, name: config.name, agentId: config.agentId,
+    deadlineMs: config.deadlineMs, command: config.command, demo: config.demo,
+    log: (l) => io.log(`[bridge] ${l}`),
+    onFatal: (reason) => {
+      io.error(`[bridge] ${reason}`);
+      process.exitCode = 1;
+      shutdown(); // 规格 7.2/7.3：致命后立即退出
+    },
+  });
+  bridge.start();
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);
   return 0;

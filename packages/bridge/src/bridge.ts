@@ -1,5 +1,5 @@
-import { Connection } from './connection.js';
-import { ChildRunner } from './child.js';
+import { Connection } from './connection.ts';
+import { ChildRunner } from './child.ts';
 
 export interface BridgeDeps {
   url: string;
@@ -27,7 +27,10 @@ export class Bridge {
   private child: ChildRunner | null = null;
   private pending: Pending | null = null;
 
-  constructor(private deps: BridgeDeps) {
+  private deps: BridgeDeps;
+
+  constructor(deps: BridgeDeps) {
+    this.deps = deps;
     const hello: Record<string, unknown> = {
       type: 'hello', protocol: 1, key: deps.key, agent: { name: deps.name },
     };

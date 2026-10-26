@@ -23,11 +23,12 @@ export class ChildRunner {
   private readonly windowMs: number;
   private readonly baseDelayMs: number;
 
-  constructor(
-    private command: string[],
-    private events: ChildEvents,
-    opts: ChildOptions = {},
-  ) {
+  private readonly command: string[];
+  private readonly events: ChildEvents;
+
+  constructor(command: string[], events: ChildEvents, opts: ChildOptions = {}) {
+    this.command = command;
+    this.events = events;
     this.maxRestarts = opts.maxRestarts ?? 5;
     this.windowMs = opts.windowMs ?? 60_000;
     this.baseDelayMs = opts.baseDelayMs ?? 1000;
@@ -57,6 +58,7 @@ export class ChildRunner {
       stdio: ['pipe', 'pipe', 'inherit'], // stderr 只到本地（规格 7.2）
     });
     this.child = child;
+    child.stdin?.on('error', () => {}); // 子进程已死时静默：事件走超时 skip 路径
     const rl = createInterface({ input: child.stdout! });
     rl.on('line', (line) => {
       const trimmed = line.trim();
@@ -75,8 +77,10 @@ export class ChildRunner {
       }
       this.events.onOutput(result.data, trimmed);
     });
-    child.on('exit', () => {
-      if (this.stopped) return;
+    let crashHandled = false;
+    const handleCrash = (): void => {
+      if (this.stopped || crashHandled) return;
+      crashHandled = true;
       this.events.onCrash();
       const now = Date.now();
       this.restartTimes = this.restartTimes.filter((t) => t > now - this.windowMs);
@@ -91,6 +95,8 @@ export class ChildRunner {
         if (!this.stopped) this.spawnChild();
       }, delay);
       timer.unref?.();
-    });
+    };
+    child.on('exit', () => handleCrash());
+    child.on('error', () => handleCrash()); // ENOENT 等按崩溃处理，走退避/致命路径
   }
 }

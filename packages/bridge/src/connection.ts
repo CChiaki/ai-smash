@@ -21,7 +21,10 @@ export class Connection {
   private stopped = false;
   private readonly baseBackoffMs: number;
 
-  constructor(private deps: ConnectionDeps) {
+  private deps: ConnectionDeps;
+
+  constructor(deps: ConnectionDeps) {
+    this.deps = deps;
     this.baseBackoffMs = deps.baseBackoffMs ?? 1000;
     this.backoffMs = this.baseBackoffMs;
   }

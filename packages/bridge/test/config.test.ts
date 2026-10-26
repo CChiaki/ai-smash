@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseArgs } from '../src/config.js';
+import { parseArgs } from '../src/config.ts';
 
 describe('parseArgs', () => {
   it('解析 -- 形式的 command', () => {

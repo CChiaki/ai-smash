@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { Bridge } from '../src/bridge.js';
-import { helloResponder, readyFrame, startMockPlatform, type MockPlatform } from './mock-platform.js';
+import { Bridge } from '../src/bridge.ts';
+import { helloResponder, readyFrame, startMockPlatform, type MockPlatform } from './mock-platform.ts';
 
 const CHILD_ARGS = ['node', '-e', `const rl=require('node:readline').createInterface({input:process.stdin});rl.on('line',l=>{try{const e=JSON.parse(l);console.log(JSON.stringify({action:'typing'}));console.log(JSON.stringify({action:'post',text:'回声:'+e.eventId}))}catch{}})`];
 

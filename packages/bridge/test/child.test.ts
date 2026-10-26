@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ChildRunner, type ChildEvents } from '../src/child.js';
+import { ChildRunner, type ChildEvents } from '../src/child.ts';
 
 function echoAgent(): string[] {
   return ['node', '-e', `const rl=require('node:readline').createInterface({input:process.stdin});rl.on('line',l=>{try{const e=JSON.parse(l);console.log(JSON.stringify({action:'post',text:'回声:'+e.eventId}))}catch{}})`];
