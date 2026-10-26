@@ -7,5 +7,6 @@ export default defineConfig({
       'apps/*/test/**/*.test.ts',
       'apps/*/test/**/*.test.tsx',
     ],
+    setupFiles: ['apps/web/test/setup.ts'],
   },
 });

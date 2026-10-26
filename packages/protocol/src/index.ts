@@ -35,6 +35,16 @@ export const RoomSummarySchema = z.object({
 });
 export type RoomSummary = z.infer<typeof RoomSummarySchema>;
 
+export const AgentRowSchema = z.object({
+  id: z.string(),
+  keyId: z.string(),
+  name: z.string(),
+  status: z.enum(['online', 'thinking', 'offline', 'error', 'waiting']),
+  lastSeenAt: z.string().nullable(),
+  createdAt: z.string(),
+});
+export type AgentRow = z.infer<typeof AgentRowSchema>;
+
 export const AgentPresenceSchema = z.object({
   agentId: z.string(),
   name: z.string(),
