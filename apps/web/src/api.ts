@@ -73,7 +73,8 @@ export function joinRoom(id: string, inviteCode: string): Promise<void> {
 
 export function fetchMessages(id: string, after?: number): Promise<{ messages: ChatMessage[] }> {
   const q = after !== undefined ? `?after=${after}` : '';
-  return api(`/rooms/${id}/messages${q}`);
+  // 私有房历史需鉴权；公开房无 token 时服务端不校验
+  return api(`/rooms/${id}/messages${q}`, { auth: true });
 }
 
 export function postMessage(id: string, text: string): Promise<ChatMessage> {

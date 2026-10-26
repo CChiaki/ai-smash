@@ -107,20 +107,20 @@ export function AdminPage() {
           ))}
           {tab === 'messages' && (rows.messages ?? []).map((m: any) => (
             <div key={m.id} className="agent-row">
-              <span className="muted">[{m.seq}] {m.sender_name}: {m.text.slice(0, 40)}</span>
+              <span className="muted">[{m.seq}] {m.senderName}: {m.text.slice(0, 40)}</span>
               <button className="btn danger" onClick={() => void act(`/admin/messages/${m.id}`, 'DELETE')}>软删</button>
             </div>
           ))}
           {tab === 'events' && (
             <table><thead><tr><th>event</th><th>room</th><th>agent</th><th>status</th><th>reason</th><th>latency</th></tr></thead>
               <tbody>{(rows.events ?? []).map((e: any) => (
-                <tr key={e.id}><td>{e.id}</td><td>{e.room_id}</td><td>{e.agent_id}</td><td>{e.status}</td><td>{e.reason ?? ''}</td><td>{e.latency_ms ?? ''}</td></tr>
+                <tr key={e.id}><td>{e.id}</td><td>{e.roomId}</td><td>{e.agentId}</td><td>{e.status}</td><td>{e.reason ?? ''}</td><td>{e.latencyMs ?? ''}</td></tr>
               ))}</tbody></table>
           )}
           {tab === 'audit' && (
             <table><thead><tr><th>时间</th><th>action</th><th>target</th></tr></thead>
               <tbody>{(rows.audit ?? []).map((a: any) => (
-                <tr key={a.id}><td>{a.created_at}</td><td>{a.action}</td><td>{a.target_type}/{a.target_id}</td></tr>
+                <tr key={a.id}><td>{a.createdAt}</td><td>{a.action}</td><td>{a.targetType}/{a.targetId}</td></tr>
               ))}</tbody></table>
           )}
         </div>

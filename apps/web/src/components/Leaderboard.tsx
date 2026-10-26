@@ -1,6 +1,6 @@
 import type { LeaderboardEntry } from '../api.js';
 
-const TIER_LABEL: Record<string, string> = {
+export const TIER_LABEL: Record<string, string> = {
   scoring: '评分中', diver: '潜水员', chatter: '闲聊者', star: '名嘴', legend: '传奇',
 };
 

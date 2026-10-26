@@ -25,8 +25,11 @@ export function RoomPage() {
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   // 回放模式不连 WS（传 null），实时模式才建立 socket
-  const { state, sendPost, connected } = useRoomSocket(replay ? null : id);
-  const roomView: RoomView | null = room ?? state.room;
+  const { state, sendPost, connected, lastError } = useRoomSocket(replay ? null : id);
+  // WS 最新状态优先合并；inviteCode/cooldownMs 仅 REST 提供，不覆盖
+  const roomView: RoomView | null = room ? { ...room, ...(state.room ?? {}) } : state.room;
+  const [historyError, setHistoryError] = useState<string | null>(null);
+  const [sendError, setSendError] = useState<string | null>(null);
 
   useEffect(() => {
     void fetchRoom(id).then(setRoom).catch((e) => setError(e instanceof ApiError ? `房间不可见：${e.code}` : '加载失败'));
@@ -34,7 +37,12 @@ export function RoomPage() {
 
   useEffect(() => {
     if (!replay) return;
-    void fetchMessages(id).then((r) => setHistory(r.messages)).catch(() => setHistory([]));
+    void fetchMessages(id)
+      .then((r) => setHistory(r.messages))
+      .catch((e) => {
+        if (e instanceof ApiError && e.status === 403) setHistoryError('私有房仅成员可见历史');
+        setHistory([]);
+      });
   }, [id, replay]);
 
   // 节奏设置默认值：按房间同步一次（roomView 引用随 WS 帧变化，避免覆盖房主输入）
@@ -56,31 +64,43 @@ export function RoomPage() {
   const send = (): void => {
     const text = draft.trim();
     if (text.length === 0) return;
-    sendPost(text);
+    if (!sendPost(text)) {
+      setSendError('未连接，发言未发出');
+      return; // 保稿：不清空输入框
+    }
+    setSendError(null);
     setDraft('');
   };
 
   const ownerApi = async (path: string, method = 'POST'): Promise<void> => {
-    await fetch(`/api/rooms/${id}${path}`, {
+    const res = await fetch(`/api/rooms/${id}${path}`, {
       method,
       headers: { authorization: `Bearer ${getToken() ?? ''}` },
     });
+    if (!res.ok) setSendError(`操作失败：HTTP ${res.status}`);
   };
 
   const kickAgent = useCallback(async (agentId: string): Promise<void> => {
-    await fetch(`/api/rooms/${id}/kick`, {
+    const res = await fetch(`/api/rooms/${id}/kick`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${getToken() ?? ''}` },
       body: JSON.stringify({ agentId }),
     });
+    if (!res.ok) setSendError(`踢出失败：HTTP ${res.status}`);
   }, [id]);
 
   const saveSettings = useCallback(async (): Promise<void> => {
+    // 只发送改动字段：避免 cooldownMs 默认回退值误覆写服务端值
+    const body: Record<string, number> = {};
+    const currentCooldown = roomView?.cooldownMs ?? DEFAULT_LIMITS.cooldownMs;
+    if (Number(cooldownMs) !== currentCooldown) body.cooldownMs = Number(cooldownMs);
+    if (roomView && Number(maxAgentsInput) !== roomView.maxAgents) body.maxAgents = Number(maxAgentsInput);
+    if (Object.keys(body).length === 0) return;
     try {
       const res = await fetch(`/api/rooms/${id}`, {
         method: 'PATCH',
         headers: { 'content-type': 'application/json', authorization: `Bearer ${getToken() ?? ''}` },
-        body: JSON.stringify({ cooldownMs: Number(cooldownMs), maxAgents: Number(maxAgentsInput) }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) {
         const data: any = await res.json().catch(() => ({}));
@@ -92,7 +112,7 @@ export function RoomPage() {
       setSaveMsg(null);
       setSaveError(e instanceof Error ? e.message : '保存失败');
     }
-  }, [id, cooldownMs, maxAgentsInput]);
+  }, [id, cooldownMs, maxAgentsInput, roomView?.cooldownMs, roomView?.maxAgents]);
 
   if (error) return <section><div className="error-text">{error}</div></section>;
   const isOwner = state.you?.isOwner ?? false;
@@ -125,7 +145,9 @@ export function RoomPage() {
       </div>
       <div className="room-body">
         <div className="card">
-          <ChatStream messages={messages} likes={state.likes} onLike={(mid) => void like(mid)} canLike={Boolean(getToken())} />
+          {replay && historyError
+            ? <div className="error-text">{historyError}</div>
+            : <ChatStream messages={messages} likes={state.likes} onLike={(mid) => void like(mid)} canLike={Boolean(getToken())} />}
           {!replay && (
             <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
               {getToken()
@@ -136,6 +158,8 @@ export function RoomPage() {
                 : <div className="muted">匿名只读。去「我的」页面申请 key 后可发言与点赞。</div>}
             </div>
           )}
+          {!replay && sendError && <div className="error-text">{sendError}</div>}
+          {!replay && lastError && <div className="error-text">{lastError}</div>}
         </div>
         <div className="card">
           <h3 style={{ marginTop: 0 }}>在场 agent</h3>

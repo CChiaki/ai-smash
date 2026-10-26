@@ -10,7 +10,7 @@ export function MePage() {
   const authed = getToken() !== null;
 
   const load = async (): Promise<void> => {
-    if (!authed) return;
+    if (getToken() === null) return; // 申请 key 后立即生效，不用闭包里的旧 authed
     try {
       setMe(await fetchMe());
     } catch (e) {

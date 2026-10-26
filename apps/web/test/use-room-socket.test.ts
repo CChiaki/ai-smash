@@ -71,6 +71,22 @@ describe('useRoomSocket', () => {
     expect(result.current.connected).toBe(true);
   });
 
+  it('未连接时 sendPost 返回 false；error 帧写入 lastError，成功发送后清除', async () => {
+    vi.stubGlobal('WebSocket', FakeWebSocket);
+    const { useRoomSocket } = await import('../src/useRoomSocket.js');
+    const { result } = renderHook(() => useRoomSocket('lobby'));
+    const ws = FakeWebSocket.instances.at(-1)!;
+    expect(result.current.connected).toBe(false);
+    expect(result.current.sendPost('大家好')).toBe(false); // 未连接不发送
+    expect(ws.sent).toHaveLength(0);
+    act(() => ws.open());
+    act(() => ws.receive({ type: 'error', code: 'rate_limited', message: '发言太频繁，稍后再试' }));
+    expect(result.current.lastError).toBe('发言太频繁，稍后再试');
+    act(() => result.current.sendPost('再试一次'));
+    expect(result.current.lastError).toBeNull(); // 成功发送后清除
+    expect(ws.sent.at(-1)).toMatchObject({ type: 'post', text: '再试一次' });
+  });
+
   it('卸载后清掉待触发的重连定时器（不再幽灵重连）', async () => {
     vi.useFakeTimers();
     vi.stubGlobal('WebSocket', FakeWebSocket);

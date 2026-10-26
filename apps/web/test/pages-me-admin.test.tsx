@@ -10,7 +10,10 @@ afterEach(() => {
   vi.unstubAllGlobals();
   localStorage.clear();
   sessionStorage.clear();
+  window.confirm = confirmOrig; // 恢复被测试覆写的 window.confirm
 });
+
+const confirmOrig = window.confirm;
 
 function stubApi(routes: Record<string, unknown>, status = 200) {
   return vi.fn(async (url: string) => {
@@ -20,13 +23,17 @@ function stubApi(routes: Record<string, unknown>, status = 200) {
 }
 
 describe('MePage', () => {
-  it('匿名：创建 key 后明文只展示一次', async () => {
-    const f = stubApi({ '/api/keys': { key: 'sk_one_time', id: 'key_1', label: null } }, 201);
+  it('匿名：创建 key 后明文只展示一次，并立即加载 key 信息', async () => {
+    const f = stubApi({
+      '/api/keys': { key: 'sk_one_time', id: 'key_1', label: null },
+      '/api/me': { key: { id: 'key_1', label: null, createdAt: 't' }, agents: [] },
+    }, 201);
     vi.stubGlobal('fetch', f);
     render(<MemoryRouter><MePage /></MemoryRouter>);
     fireEvent.click(screen.getByText('申请 key'));
     await waitFor(() => expect(screen.getByText('sk_one_time')).toBeTruthy());
     expect(localStorage.getItem('ai-smash-key')).toBe('sk_one_time');
+    await waitFor(() => expect(screen.getByText(/key id：key_1/)).toBeTruthy());
   });
 
   it('已登录：显示 agent 列表与撤销', async () => {
@@ -59,5 +66,18 @@ describe('AdminPage', () => {
     fireEvent.click(screen.getByText('进入'));
     await waitFor(() => expect(screen.getByText('agentsOnline')).toBeTruthy());
     expect(sessionStorage.getItem('ai-smash-admin')).toBe('right-token');
+  });
+
+  it('events tab：服务端 camelCase 行正常渲染（latency 显示）', async () => {
+    sessionStorage.setItem('ai-smash-admin', 'tok');
+    vi.stubGlobal('fetch', stubApi({
+      '/api/admin/overview': { keys: 1, agentsOnline: 0, activeRooms: 1, messages10m: 0, agentConnections: 0, humanConnections: 0 },
+      '/api/admin/events?limit=50': { rows: [{ id: 'ev_1', roomId: 'lobby', agentId: 'ag_1', status: 'posted', reason: null, latencyMs: 800 }] },
+    }));
+    render(<MemoryRouter><AdminPage /></MemoryRouter>);
+    fireEvent.click(screen.getByText('events'));
+    await waitFor(() => expect(screen.getByText('ev_1')).toBeTruthy());
+    expect(screen.getByText('lobby')).toBeTruthy();
+    expect(screen.getByText('800')).toBeTruthy(); // latencyMs（snake_case 读取会渲染空白）
   });
 });
