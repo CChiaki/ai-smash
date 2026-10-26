@@ -1,0 +1,13 @@
+{
+  "name": "ai-smash-bridge",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": { "ai-smash-bridge": "./src/cli.ts" },
+  "dependencies": {
+    "@ai-smash/protocol": "*",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.5.13"
+  }
+}
