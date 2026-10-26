@@ -98,4 +98,63 @@ describe('RoomPage', () => {
     fireEvent.click(screen.getByText('暂停'));
     await waitFor(() => expect(vi.mocked(fetch).mock.calls.some((c) => c[0] === '/api/rooms/r1/pause')).toBe(true));
   });
+
+  it('私有房房主：控制条显示邀请码与节奏设置，保存发送 PATCH', async () => {
+    // stub WebSocket 防真实连接
+    class FakeWS {
+      static OPEN = 1;
+      static instances: FakeWS[] = [];
+      readyState = 0; onopen: any = null; onclose: any = null; onmessage: any = null; sent: any[] = [];
+      constructor(_u: string) { FakeWS.instances.push(this); }
+      open() { this.readyState = 1; this.onopen?.(); }
+      close() { this.readyState = 3; this.onclose?.(); }
+      send(d: string) { this.sent.push(d); }
+      receive(f: unknown) { this.onmessage?.({ data: JSON.stringify(f) }); }
+    }
+    vi.stubGlobal('WebSocket', FakeWS as any);
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: any) => {
+      if (url === '/api/rooms/r1') {
+        if (init?.method === 'PATCH') {
+          return new Response(JSON.stringify({ id: 'r1', cooldownMs: 1500, maxAgents: 30 }), { status: 200, headers: { 'content-type': 'application/json' } });
+        }
+        return new Response(JSON.stringify({ id: 'r1', title: '测试房', topic: null, visibility: 'private', status: 'active', onlineAgents: 1, maxAgents: 20, inviteCode: 'INV-9' }), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      if (url.startsWith('/api/rooms/r1/messages')) {
+        return new Response(JSON.stringify({ messages: [] }), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      throw new Error(`unexpected ${url}`);
+    }));
+    localStorage.setItem('ai-smash-key', 'sk_tok');
+    render(
+      <MemoryRouter initialEntries={['/rooms/r1']}>
+        <Routes><Route path="/rooms/:id" element={<RoomPage />} /></Routes>
+      </MemoryRouter>,
+    );
+    const ws = (FakeWS as any).instances?.at?.(-1);
+    act(() => {
+      ws.open();
+      ws.receive({
+        type: 'ready',
+        room: { id: 'r1', title: '测试房', topic: null, visibility: 'private', status: 'active', onlineAgents: 1, maxAgents: 20 },
+        messages: [],
+        agents: [],
+        you: { keyId: 'k1', name: '房主', isOwner: true },
+      });
+    });
+    // 邀请码来自 fetchRoom（REST 房主视角）
+    await waitFor(() => expect(screen.getByText(/邀请码：INV-9/)).toBeTruthy());
+    expect(screen.getByText('保存')).toBeTruthy();
+    // 默认值取当前 room 值（cooldownMs 未随 room 下发时取协议默认 10000）
+    expect((screen.getByLabelText('冷却 ms') as HTMLInputElement).value).toBe('10000');
+    expect((screen.getByLabelText('人数上限') as HTMLInputElement).value).toBe('20');
+    fireEvent.change(screen.getByLabelText('冷却 ms'), { target: { value: '1500' } });
+    fireEvent.change(screen.getByLabelText('人数上限'), { target: { value: '30' } });
+    fireEvent.click(screen.getByText('保存'));
+    await waitFor(() => {
+      const patch = vi.mocked(fetch).mock.calls.find((c) => c[0] === '/api/rooms/r1' && (c[1] as any)?.method === 'PATCH');
+      expect(patch).toBeTruthy();
+      expect(JSON.parse((patch![1] as any).body)).toEqual({ cooldownMs: 1500, maxAgents: 30 });
+    });
+    await screen.findByText('已保存');
+  });
 });
