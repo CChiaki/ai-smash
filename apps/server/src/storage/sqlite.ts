@@ -412,6 +412,12 @@ export class SqliteStorage implements Storage {
     ).c;
   }
 
+  countMessagesSince(sinceIso: string): number {
+    return (
+      this.db.prepare(`SELECT COUNT(*) AS c FROM messages WHERE created_at >= ?`).get(sinceIso) as any
+    ).c;
+  }
+
   // ---------- events ----------
 
   insertEvent(input: NewEventInput): void {
@@ -419,6 +425,24 @@ export class SqliteStorage implements Storage {
       `INSERT INTO events (id, room_id, agent_id, trigger_message_id, notified_at)
        VALUES (?, ?, ?, ?, ?)`,
     ).run(input.id, input.roomId, input.agentId, input.triggerMessageId, input.notifiedAt);
+  }
+
+  listEvents(opts?: { roomId?: string; agentId?: string; limit?: number }): EventRow[] {
+    const clauses: string[] = [];
+    const params: any[] = [];
+    if (opts?.roomId) { clauses.push('room_id = ?'); params.push(opts.roomId); }
+    if (opts?.agentId) { clauses.push('agent_id = ?'); params.push(opts.agentId); }
+    const where = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : '';
+    params.push(opts?.limit ?? 100);
+    return (
+      this.db.prepare(
+        `SELECT * FROM events ${where} ORDER BY notified_at DESC LIMIT ?`,
+      ).all(...params) as any[]
+    ).map((r) => ({
+      id: r.id, roomId: r.room_id, agentId: r.agent_id,
+      triggerMessageId: r.trigger_message_id, status: r.status, reason: r.reason,
+      notifiedAt: r.notified_at, decidedAt: r.decided_at, latencyMs: r.latency_ms,
+    }));
   }
 
   getEvent(id: string): EventRow | undefined {

@@ -9,12 +9,16 @@ import { bearerKey } from './http/auth.js';
 import { registerKeyRoutes } from './http/routes-keys.js';
 import { registerRoomRoutes } from './http/routes-rooms.js';
 import { registerSocialRoutes } from './http/routes-social.js';
+import { registerAdminRoutes } from './http/routes-admin.js';
 
 export interface AppDeps {
   storage: Storage;
   engine: RoomEngine;
   bus: Bus;
   config: Config;
+  // 结构类型内联声明，避免 app.ts ↔ ws 目录循环 import（compose 传实例，纯 REST 测试可传 null）
+  agentGateway?: { forceDisconnect(id: string): void; onlineCount(): number } | null;
+  humanGateway?: { onlineCount(): number } | null;
 }
 
 export function buildApp(deps: AppDeps): FastifyInstance {
@@ -35,6 +39,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   registerKeyRoutes(app, deps);
   registerRoomRoutes(app, deps);
   registerSocialRoutes(app, deps);
+  registerAdminRoutes(app, deps);
   app.get('/healthz', async () => ({ ok: true }));
   return app;
 }

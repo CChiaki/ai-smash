@@ -20,9 +20,11 @@ export function composeServer(config: Config, provided?: SqliteStorage): ServerH
   storage.ensureLobby({ title: '公共大厅', maxAgents: DEFAULT_LIMITS.lobbyMaxAgents, at: new Date().toISOString() });
   const bus = new MemoryBus();
   const engine = new RoomEngine({ storage, bus });
-  const app = buildApp({ storage, bus, engine, config });
-  const agentGateway = new AgentGateway({ storage, bus, engine, config });
-  const humanGateway = new HumanGateway({ storage, bus, engine, config });
+  // 先构造网关（admin 路由需要真实网关实例），再 buildApp；网关 deps 不引用 app，无循环依赖
+  const base = { storage, bus, engine, config };
+  const agentGateway = new AgentGateway(base);
+  const humanGateway = new HumanGateway(base);
+  const app = buildApp({ ...base, agentGateway, humanGateway });
   app.server.on('upgrade', (req, socket, head) => {
     const url = new URL(req.url ?? '/', 'http://localhost');
     if (url.pathname === '/ws/agent') agentGateway.handleUpgrade(req, socket, head);

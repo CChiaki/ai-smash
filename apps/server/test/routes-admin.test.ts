@@ -1,0 +1,85 @@
+import { WebSocket } from 'ws';
+import { afterAll, describe, expect, it } from 'vitest';
+import { newKey, sha256 } from '../src/ids.js';
+import { composeServer } from '../src/compose.js';
+import { admin, testConfig } from './http-helpers.js';
+
+const servers: Array<{ close: () => Promise<void> }> = [];
+afterAll(async () => { for (const s of servers) await s.close(); });
+
+async function start() {
+  const handle = composeServer(testConfig());
+  await handle.app.listen({ port: 0, host: '127.0.0.1' });
+  const port = (handle.app.server.address() as any).port;
+  servers.push({ close: () => handle.app.close() });
+  return { handle, port };
+}
+
+describe('admin routes', () => {
+  it('无 token 401', async () => {
+    const { handle } = await start();
+    const res = await handle.app.inject({ method: 'GET', url: '/api/admin/overview' });
+    expect(res.statusCode).toBe(401);
+  });
+
+  it('overview 数字正确', async () => {
+    const { handle } = await start();
+    handle.storage.createKey({ id: 'key_1', hash: sha256(newKey()), label: null, createdAt: 't' });
+    const res = await handle.app.inject({ method: 'GET', url: '/api/admin/overview', headers: admin() });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().keys).toBe(1);
+    expect(res.json().activeRooms).toBeGreaterThanOrEqual(1);
+  });
+
+  it('封 key 会强制断开其 agent 并记审计', async () => {
+    const { handle, port } = await start();
+    const raw = newKey();
+    handle.storage.createKey({ id: 'key_v', hash: sha256(raw), label: null, createdAt: 't' });
+    const ws = new WebSocket(`ws://127.0.0.1:${port}/ws/agent`);
+    await new Promise<void>((r) => ws.on('open', r));
+    ws.send(JSON.stringify({ type: 'hello', protocol: 1, key: raw, agent: { name: '小豆' } }));
+    await new Promise((r) => setTimeout(r, 50));
+    const agentId = handle.storage.listAgents()[0].id;
+    const res = await handle.app.inject({ method: 'POST', url: '/api/admin/keys/key_v/ban', headers: admin() });
+    expect(res.statusCode).toBe(204);
+    await new Promise((r) => setTimeout(r, 50));
+    expect(handle.agentGateway.onlineCount()).toBe(0);
+    expect(handle.storage.getAgent(agentId)?.status).toBe('offline');
+    const audit = handle.app.inject ? await handle.app.inject({ method: 'GET', url: '/api/admin/audit', headers: admin() }) : null;
+    expect((audit as any).json().rows.some((r: any) => r.action === 'ban_key')).toBe(true);
+    ws.terminate();
+  });
+
+  it('PATCH 房间走 updateRoomSettings：提高上限转正候补', async () => {
+    const { handle } = await start();
+    handle.storage.updateRoom('lobby', { maxAgents: 1 });
+    handle.storage.upsertAgent({ id: 'ag_w', keyId: 'key_x', name: '候补', at: 't' });
+    handle.storage.addRoomAgent('lobby', 'ag_w', 'waiting', 't1');
+    const res = await handle.app.inject({ method: 'PATCH', url: '/api/admin/rooms/lobby', headers: admin(), payload: { maxAgents: 5 } });
+    expect(res.statusCode).toBe(200);
+    expect(handle.storage.getRoomAgent('lobby', 'ag_w')?.status).toBe('active');
+  });
+
+  it('大厅不可归档/删除（400 lobby_immutable）', async () => {
+    const { handle } = await start();
+    const archive = await handle.app.inject({ method: 'POST', url: '/api/admin/rooms/lobby/archive', headers: admin() });
+    expect(archive.statusCode).toBe(400);
+    expect(archive.json().error).toBe('lobby_immutable');
+    const del = await handle.app.inject({ method: 'DELETE', url: '/api/admin/rooms/lobby', headers: admin() });
+    expect(del.statusCode).toBe(400);
+  });
+
+  it('软删消息与事件查询', async () => {
+    const { handle } = await start();
+    const msg = handle.storage.insertMessage({
+      roomId: 'lobby', senderKind: 'human', senderName: 'x',
+      agentId: null, keyId: null, text: '违规', replyTo: null, createdAt: 't',
+    });
+    handle.storage.insertEvent({ id: 'ev_x', roomId: 'lobby', agentId: 'ag_x', triggerMessageId: msg.id, notifiedAt: 't' });
+    const del = await handle.app.inject({ method: 'DELETE', url: `/api/admin/messages/${msg.id}`, headers: admin() });
+    expect(del.statusCode).toBe(204);
+    expect(handle.storage.getMessage(msg.id)?.deletedAt).toBeTruthy();
+    const ev = await handle.app.inject({ method: 'GET', url: '/api/admin/events?agentId=ag_x', headers: admin() });
+    expect(ev.json().rows.map((r: any) => r.id)).toEqual(['ev_x']);
+  });
+});

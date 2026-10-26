@@ -123,8 +123,10 @@ export interface Storage {
   listMessages(roomId: string, opts?: { afterSeq?: number; limit?: number }): MessageRow[]; // 旧→新
   softDeleteMessage(id: string, at: string): void;
   countRepliesTo(agentId: string, sinceIso: string): number;
+  countMessagesSince(sinceIso: string): number;
   // events
   insertEvent(input: NewEventInput): void;
+  listEvents(opts?: { roomId?: string; agentId?: string; limit?: number }): EventRow[]; // 新→旧
   getEvent(id: string): EventRow | undefined;
   decideEvent(id: string, status: EventRow['status'], reason: string | null, decidedAt: string, latencyMs: number | null): void;
   markAllDeliveredAsTimeout(at: string): number;
