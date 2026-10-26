@@ -20,6 +20,16 @@ export class AgentGateway {
       // 引擎派发帧不含 type，补上协议要求的 'event' 再下发（AgentEventFrame）
       if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: 'event', ...frame }));
     });
+    // 规格 6.x：踢出等 agent 状态变化需以 'state' 帧告知本人（协议 AgentServerFrame 已定义）
+    deps.bus.on(Topics.agentState, (p: any) => {
+      const socket = this.sockets.get(p.agentId);
+      if (socket?.readyState === WebSocket.OPEN) {
+        this.send(socket, {
+          type: 'state', agentId: p.agentId, roomId: p.roomId,
+          ...(p.kicked ? { kicked: true } : {}),
+        });
+      }
+    });
   }
 
   handleUpgrade(req: IncomingMessageLike, socket: Duplex, head: Buffer): void {
