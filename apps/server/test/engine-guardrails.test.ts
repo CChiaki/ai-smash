@@ -178,3 +178,24 @@ describe('人类限速', () => {
     }
   });
 });
+
+describe('inflight 守卫', () => {
+  it('在途期间派发合并为新事件，不覆盖在途 event', () => {
+    vi.setSystemTime(t0());
+    const w = makeWorld({ cooldownMs: 0 } as any);
+    const dispatched = record(w.bus, Topics.eventDispatch);
+    const a = addAgent(w, '小豆');
+    join(w, a.id);
+    const m1 = w.engine.humanPost('lobby', 'key_1', '阿伟', '一');
+    w.engine.humanPost('lobby', 'key_1', '阿伟', '二'); // 合并为 pending
+    // 发言后：先派发自己消息触发的 E2，pending 不应覆盖 E2
+    w.engine.agentPost(a.id, dispatched[0].eventId, '自言自语1');
+    expect(dispatched).toHaveLength(2);
+    const e2 = dispatched[1];
+    // skip 掉 E2 后，pending 的 m2 才被补派为 E3
+    w.engine.agentSkip(a.id, e2.eventId);
+    expect(dispatched).toHaveLength(3);
+    expect(dispatched[2].trigger.messageId).not.toBe(e2.trigger.messageId);
+    expect(w.storage.getEvent(e2.eventId)?.status).toBe('skipped');
+  });
+});

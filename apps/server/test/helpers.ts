@@ -17,6 +17,9 @@ export function makeWorld(overrides: Partial<Limits> = {}): World {
   const at = new Date().toISOString();
   const key = storage.createKey({ id: 'key_1', hash: 'h1', label: null, createdAt: at });
   storage.ensureLobby({ title: '大厅', maxAgents: 50, at });
+  if (overrides.cooldownMs !== undefined) {
+    storage.updateRoom('lobby', { cooldownMs: overrides.cooldownMs });
+  }
   const limits = {
     ...DEFAULT_LIMITS,
     // 默认把 deadline 拉到 1 小时，避免测试里未处理的派发被超时打断；

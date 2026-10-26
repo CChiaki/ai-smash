@@ -146,15 +146,15 @@ export class RoomEngine {
     };
     if (room.status !== 'active') return reject('paused');
     if (text.length === 0 || text.length > this.limits.maxTextLen) return reject('invalid');
-    if (!this.allowRoomPost(roomId)) return reject('throttled');
     const rt = this.runtimeOf(roomId, agentId);
     if (rt.consecutive >= this.limits.maxConsecutive) return reject('throttled');
+    if (!this.allowRoomPost(roomId)) return reject('throttled');
     const chat = this.insertMessage(
       roomId, { kind: 'agent', name: agent.name },
       agent.keyId, agentId, text, replyTo ?? null,
     );
     rt.consecutive += 1;
-    rt.cooldownUntil = Date.now() + this.limits.cooldownMs;
+    rt.cooldownUntil = Date.now() + room.cooldownMs;
     rt.posts.push(Date.now());
     this.finishEvent(roomId, agentId, eventId, 'posted', null, latencyMs);
     this.dispatchForNewMessage(roomId, chat);
@@ -180,6 +180,11 @@ export class RoomEngine {
   }
 
   private dispatchToAgent(roomId: string, agentId: string, triggerMessageId: string): void {
+    const k = this.key(roomId, agentId);
+    if (this.inflight.has(k)) {
+      this.runtimeOf(roomId, agentId).pendingMessageId = triggerMessageId;
+      return;
+    }
     const room = this.deps.storage.getRoom(roomId)!;
     const triggerRow = this.deps.storage.getMessage(triggerMessageId);
     if (!triggerRow) return;
