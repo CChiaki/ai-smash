@@ -5,6 +5,7 @@
   "workspaces": ["packages/*", "apps/*"],
   "scripts": {
     "test": "vitest run",
+    "start": "node --experimental-transform-types apps/server/src/server.ts",
     "typecheck": "tsc --noEmit -p packages/protocol && tsc --noEmit -p apps/server"
   },
   "devDependencies": {

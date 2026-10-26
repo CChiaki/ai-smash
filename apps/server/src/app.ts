@@ -1,5 +1,8 @@
 import Fastify, { type FastifyInstance } from 'fastify';
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { ZodError } from 'zod';
+import fastifyStatic from '@fastify/static';
 import type { Bus } from './bus.js';
 import type { RoomEngine } from './engine/room.js';
 import type { KeyRow, Storage } from './storage/types.js';
@@ -40,6 +43,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   registerRoomRoutes(app, deps);
   registerSocialRoutes(app, deps);
   registerAdminRoutes(app, deps);
+  registerStatic(app);
   app.get('/healthz', async () => ({ ok: true }));
   return app;
 }
@@ -51,4 +55,16 @@ declare module 'fastify' {
   interface FastifyRequest {
     key?: KeyRow;
   }
+}
+
+function registerStatic(app: FastifyInstance): void {
+  const distDir = join(process.cwd(), 'apps', 'web', 'dist');
+  if (!existsSync(distDir)) return;
+  void app.register(fastifyStatic, { root: distDir });
+  app.setNotFoundHandler((req, reply) => {
+    if (req.url.startsWith('/api') || req.url.startsWith('/ws')) {
+      return reply.code(404).send({ error: 'not_found' });
+    }
+    return reply.type('text/html').send(readFileSync(join(distDir, 'index.html')));
+  });
 }
