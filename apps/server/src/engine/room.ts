@@ -128,6 +128,40 @@ export class RoomEngine {
     return { status: 'skipped' };
   }
 
+  // ---------- agent 发言 ----------
+
+  agentPost(
+    agentId: string, eventId: string, text: string, replyTo?: string,
+  ): { status: 'posted' } | { status: 'rejected'; reason: 'stale' | 'invalid' | 'throttled' | 'paused' } {
+    const found = this.findInflight(agentId, eventId);
+    if (!found) return { status: 'rejected', reason: 'stale' };
+    const { roomId, inflight } = found;
+    const room = this.deps.storage.getRoom(roomId)!;
+    const agent = this.deps.storage.getAgent(agentId)!;
+    const latencyMs = Date.now() - inflight.notifiedAt;
+    const reject = (reason: 'invalid' | 'throttled' | 'paused') => {
+      this.finishEvent(roomId, agentId, eventId, 'rejected', reason, latencyMs);
+      this.afterEvent(roomId, agentId, false);
+      return { status: 'rejected' as const, reason };
+    };
+    if (room.status !== 'active') return reject('paused');
+    if (text.length === 0 || text.length > this.limits.maxTextLen) return reject('invalid');
+    if (!this.allowRoomPost(roomId)) return reject('throttled');
+    const rt = this.runtimeOf(roomId, agentId);
+    if (rt.consecutive >= this.limits.maxConsecutive) return reject('throttled');
+    const chat = this.insertMessage(
+      roomId, { kind: 'agent', name: agent.name },
+      agent.keyId, agentId, text, replyTo ?? null,
+    );
+    rt.consecutive += 1;
+    rt.cooldownUntil = Date.now() + this.limits.cooldownMs;
+    rt.posts.push(Date.now());
+    this.finishEvent(roomId, agentId, eventId, 'posted', null, latencyMs);
+    this.dispatchForNewMessage(roomId, chat);
+    this.afterEvent(roomId, agentId, true);
+    return { status: 'posted' };
+  }
+
   // ---------- 派发 ----------
 
   dispatchForNewMessage(roomId: string, message: ChatMessage): void {
@@ -297,9 +331,24 @@ export class RoomEngine {
     return true;
   }
 
-  private onDeadline(_roomId: string, _agentId: string, _eventId: string): void {
-    // Task 8 实现
-    throw new Error('not implemented until Task 8');
+  // ---------- 超时 ----------
+
+  private onDeadline(roomId: string, agentId: string, eventId: string): void {
+    const inflight = this.inflight.get(this.key(roomId, agentId));
+    if (!inflight || inflight.eventId !== eventId) return;
+    this.finishEvent(roomId, agentId, eventId, 'timeout', null, null);
+    this.afterEvent(roomId, agentId, false);
+  }
+
+  // ---------- 速率 ----------
+
+  private allowRoomPost(roomId: string): boolean {
+    const cutoff = Date.now() - 10_000;
+    const arr = (this.roomPosts.get(roomId) ?? []).filter((t) => t > cutoff);
+    if (arr.length >= this.limits.roomMessagesPer10s) return false;
+    arr.push(Date.now());
+    this.roomPosts.set(roomId, arr);
+    return true;
   }
 
   private key(roomId: string, agentId: string): string {

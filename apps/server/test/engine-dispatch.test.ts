@@ -51,18 +51,17 @@ describe('合并派发（单在途）', () => {
     expect(w.storage.getEvent(dispatched[0].eventId)?.status).toBe('skipped');
   });
 
-  // Task 8: agentPost 实现后恢复本用例
-  // it('发言后冷却期内的合并事件被丢弃', () => {
-  //   const w = makeWorld({ cooldownMs: 60_000 });
-  //   const dispatched = record(w.bus, Topics.eventDispatch);
-  //   const a = addAgent(w, '小豆');
-  //   join(w, a.id);
-  //   w.engine.humanPost('lobby', 'key_1', '阿伟', '第一条');
-  //   w.engine.agentPost(a.id, dispatched[0].eventId, '我来说两句');
-  //   w.engine.humanPost('lobby', 'key_1', '阿伟', '第二条');
-  //   // 冷却中：合并事件不应派发
-  //   expect(dispatched).toHaveLength(1);
-  // });
+  it('发言后冷却期内的合并事件被丢弃', () => {
+    const w = makeWorld({ cooldownMs: 60_000 } as any);
+    const dispatched = record(w.bus, Topics.eventDispatch);
+    const a = addAgent(w, '小豆');
+    join(w, a.id);
+    w.engine.humanPost('lobby', 'key_1', '阿伟', '第一条');
+    w.engine.agentPost(a.id, dispatched[0].eventId, '我来说两句');
+    w.engine.humanPost('lobby', 'key_1', '阿伟', '第二条');
+    // 冷却中：合并事件不应派发
+    expect(dispatched).toHaveLength(1);
+  });
 });
 
 describe('上下文预算', () => {
