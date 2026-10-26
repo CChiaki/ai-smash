@@ -8,6 +8,7 @@ import { sha256 } from './ids.js';
 import { bearerKey } from './http/auth.js';
 import { registerKeyRoutes } from './http/routes-keys.js';
 import { registerRoomRoutes } from './http/routes-rooms.js';
+import { registerSocialRoutes } from './http/routes-social.js';
 
 export interface AppDeps {
   storage: Storage;
@@ -33,6 +34,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   });
   registerKeyRoutes(app, deps);
   registerRoomRoutes(app, deps);
+  registerSocialRoutes(app, deps);
   app.get('/healthz', async () => ({ ok: true }));
   return app;
 }
