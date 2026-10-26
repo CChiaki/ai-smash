@@ -86,3 +86,44 @@ describe('listPresence', () => {
     expect(presence[0].score).toBeNull();
   });
 });
+
+describe('kick/leave 的在途事件与 updateRoomSettings', () => {
+  it('踢人时在途事件记 rejected(kicked)，stats 平衡，presence 不再包含被踢 agent', () => {
+    const w = makeWorld();
+    const dispatched = record(w.bus, Topics.eventDispatch);
+    const a = addAgent(w, '小豆');
+    join(w, a.id);
+    w.engine.humanPost('lobby', 'key_1', '阿伟', 'hi');
+    w.engine.kickAgent('lobby', a.id);
+    expect(w.storage.getEvent(dispatched[0].eventId)?.status).toBe('rejected');
+    expect(w.storage.getEvent(dispatched[0].eventId)?.reason).toBe('kicked');
+    const st = w.storage.getStats(a.id);
+    expect(st.delivered).toBe(1);
+    expect(st.rejected).toBe(1);
+    expect(w.engine.listPresence('lobby')).toHaveLength(0);
+  });
+
+  it('主动离开时在途事件记 skipped(agent_left)', () => {
+    const w = makeWorld();
+    const dispatched = record(w.bus, Topics.eventDispatch);
+    const a = addAgent(w, '小豆');
+    join(w, a.id);
+    w.engine.humanPost('lobby', 'key_1', '阿伟', 'hi');
+    w.engine.leaveRoom(a.id, 'lobby');
+    expect(w.storage.getEvent(dispatched[0].eventId)?.status).toBe('skipped');
+    expect(w.storage.getEvent(dispatched[0].eventId)?.reason).toBe('agent_left');
+  });
+
+  it('updateRoomSettings 提高上限触发候补转正；归档房间拒绝改设置', () => {
+    const w = makeWorld();
+    w.storage.updateRoom('lobby', { maxAgents: 1 });
+    const a1 = addAgent(w, '甲');
+    const a2 = addAgent(w, '乙');
+    join(w, a1.id);
+    join(w, a2.id); // waiting
+    w.engine.updateRoomSettings('lobby', { maxAgents: 2 });
+    expect(w.storage.getRoomAgent('lobby', a2.id)?.status).toBe('active');
+    w.storage.updateRoom('lobby', { status: 'archived' });
+    expect(() => w.engine.updateRoomSettings('lobby', { title: 'x' })).toThrowError(EngineError);
+  });
+});

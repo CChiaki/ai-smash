@@ -3,6 +3,7 @@ import { DEFAULT_LIMITS } from '@ai-smash/protocol';
 import type { Bus } from '../bus.js';
 import { Topics } from '../topics.js';
 import type { Storage } from '../storage/types.js';
+import type { RoomRow } from '../storage/types.js';
 import { toChatMessage } from './chat.js';
 import { newId } from '../ids.js';
 import { EngineError } from './errors.js';
@@ -52,6 +53,8 @@ export class RoomEngine {
   leaveRoom(agentId: string, roomId: string): void {
     const ra = this.deps.storage.getRoomAgent(roomId, agentId);
     if (!ra) return;
+    const inflight = this.inflight.get(this.key(roomId, agentId));
+    if (inflight) this.finishEvent(roomId, agentId, inflight.eventId, 'skipped', 'agent_left', null);
     this.deps.storage.removeRoomAgent(roomId, agentId);
     this.clearInflight(roomId, agentId);
     this.promoteWaiting(roomId);
@@ -61,6 +64,8 @@ export class RoomEngine {
   kickAgent(roomId: string, agentId: string): void {
     const ra = this.deps.storage.getRoomAgent(roomId, agentId);
     if (!ra || ra.status === 'kicked') return;
+    const inflight = this.inflight.get(this.key(roomId, agentId));
+    if (inflight) this.finishEvent(roomId, agentId, inflight.eventId, 'rejected', 'kicked', null);
     this.deps.storage.setRoomAgentStatus(roomId, agentId, 'kicked');
     this.clearInflight(roomId, agentId);
     this.deps.bus.emit(Topics.agentState, { agentId, roomId, kicked: true });
@@ -80,10 +85,24 @@ export class RoomEngine {
     if (latest) this.dispatchForNewMessage(roomId, toChatMessage(latest));
   }
 
+  // 规格 8.4：上限调高触发候补转正；archived 是终态，拒绝任何设置变更
+  updateRoomSettings(
+    roomId: string,
+    patch: Partial<Pick<RoomRow, 'title' | 'topic' | 'status' | 'cooldownMs' | 'maxAgents'>>,
+  ): RoomRow {
+    const room = this.deps.storage.getRoom(roomId);
+    if (!room) throw new EngineError('not_found');
+    if (room.status === 'archived' || patch.status === 'archived') throw new EngineError('archived');
+    const updated = this.deps.storage.updateRoom(roomId, patch);
+    if (patch.maxAgents !== undefined) this.promoteWaiting(roomId);
+    this.deps.bus.emit(Topics.roomUpdate, { room: this.deps.storage.getRoom(roomId)! });
+    return updated;
+  }
+
   // ---------- 在场与状态 ----------
 
   listPresence(roomId: string): AgentPresence[] {
-    return this.deps.storage.listRoomAgents(roomId).map((ra) => {
+    return this.deps.storage.listRoomAgents(roomId).filter((ra) => ra.status !== 'kicked').map((ra) => {
       const agent = this.deps.storage.getAgent(ra.agentId)!;
       const score = this.deps.storage.getScore(ra.agentId) ?? null;
       const thinking = this.inflight.has(this.key(roomId, ra.agentId));
@@ -167,6 +186,8 @@ export class RoomEngine {
   dispatchForNewMessage(roomId: string, message: ChatMessage): void {
     const room = this.deps.storage.getRoom(roomId);
     if (!room || room.status !== 'active') return;
+    // 规格 8.2(2)：同一触发消息的上下文序列化一次后复用
+    const context = this.buildContext(roomId);
     for (const ra of this.deps.storage.listRoomAgents(roomId)) {
       if (ra.status !== 'active') continue;
       const k = this.key(roomId, ra.agentId);
@@ -175,11 +196,14 @@ export class RoomEngine {
         continue;
       }
       if (!this.canDispatch(roomId, ra.agentId)) continue;
-      this.dispatchToAgent(roomId, ra.agentId, message.id);
+      this.dispatchToAgent(roomId, ra.agentId, message.id, context);
     }
   }
 
-  private dispatchToAgent(roomId: string, agentId: string, triggerMessageId: string): void {
+  private dispatchToAgent(
+    roomId: string, agentId: string, triggerMessageId: string,
+    context: { messages: ChatMessage[]; truncated: boolean },
+  ): void {
     const k = this.key(roomId, agentId);
     if (this.inflight.has(k)) {
       this.runtimeOf(roomId, agentId).pendingMessageId = triggerMessageId;
@@ -213,7 +237,7 @@ export class RoomEngine {
         },
       },
       room: { title: room.title, topic: room.topic },
-      context: this.buildContext(roomId),
+      context,
       deadlineAt: new Date(now + this.limits.deadlineMs).toISOString(),
     });
   }
@@ -295,7 +319,7 @@ export class RoomEngine {
     rt.pendingMessageId = null;
     const blocked = spoke && rt.cooldownUntil > Date.now();
     if (pending && !blocked && this.canDispatch(roomId, agentId)) {
-      this.dispatchToAgent(roomId, agentId, pending);
+      this.dispatchToAgent(roomId, agentId, pending, this.buildContext(roomId));
     }
     this.emitPresence(roomId);
   }

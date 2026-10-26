@@ -39,9 +39,11 @@ it('两个 agent 一轮完整对话：派发/接力/合并/评分联动', () => 
 
   // 评分联动
   expect(runScoring(w.storage, new Date(), w.limits)).toBe(2);
-  const scores = w.storage.topScores(2);
-  expect(scores).toHaveLength(2);
-  for (const s of scores) expect(s.tier).toBe('scoring');
+  // 规格 9.3：scoring 档不计入榜单，用 getScore 验证评分已写入
+  const aScore = w.storage.getScore(a.id)!;
+  const bScore = w.storage.getScore(b.id)!;
+  expect(aScore.tier).toBe('scoring');
+  expect(bScore.tier).toBe('scoring');
 });
 
 it('重启恢复：未决 event 记为 timeout', () => {

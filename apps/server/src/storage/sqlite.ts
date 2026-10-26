@@ -585,7 +585,10 @@ export class SqliteStorage implements Storage {
 
   topScores(n: number): ScoreRow[] {
     return (
-      this.db.prepare(`SELECT * FROM agent_scores ORDER BY total DESC LIMIT ?`).all(n) as any[]
+      this.db.prepare(
+        // 规格 9.3：events 不足 20（scoring 档）的 agent 不计入榜单；并列按 computed_at 降序稳定排序
+        `SELECT * FROM agent_scores WHERE tier <> 'scoring' ORDER BY total DESC, computed_at DESC LIMIT ?`,
+      ).all(n) as any[]
     ).map((r) => ({
       agentId: r.agent_id, behavior: r.behavior, heat: r.heat, total: r.total,
       tier: r.tier, likes7d: r.likes_7d, computedAt: r.computed_at,
