@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3';
 import { newId } from '../ids.js';
 import type {
-  AgentRow, KeyRow,
+  AgentRow, KeyRow, RoomAgentRow, RoomMemberRow, RoomRow,
 } from './types.js';
 
 const SCHEMA = `
@@ -171,5 +171,175 @@ export class SqliteStorage {
 
   listAgents(): AgentRow[] {
     return (this.db.prepare(`SELECT * FROM agents ORDER BY created_at`).all() as any[]).map((r) => this.mapAgent(r));
+  }
+
+  // ---------- 行映射 ----------
+
+  private mapRoom(r: any): RoomRow {
+    return {
+      id: r.id, title: r.title, topic: r.topic, visibility: r.visibility,
+      ownerKeyId: r.owner_key_id, status: r.status, inviteCode: r.invite_code,
+      cooldownMs: r.cooldown_ms, maxAgents: r.max_agents, createdAt: r.created_at,
+    };
+  }
+
+  private mapRoomAgent(r: any): RoomAgentRow {
+    return { roomId: r.room_id, agentId: r.agent_id, status: r.status, joinedAt: r.joined_at };
+  }
+
+  // ---------- rooms ----------
+
+  private insertRoom(input: {
+    id: string; title: string; topic: string | null;
+    visibility: 'public' | 'private'; ownerKeyId: string | null;
+    inviteCode: string | null; cooldownMs: number; maxAgents: number; at: string;
+  }): RoomRow {
+    this.db.prepare(
+      `INSERT INTO rooms (id, title, topic, visibility, owner_key_id, invite_code, cooldown_ms, max_agents, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).run(
+      input.id, input.title, input.topic, input.visibility,
+      input.ownerKeyId, input.inviteCode, input.cooldownMs, input.maxAgents, input.at,
+    );
+    return {
+      id: input.id, title: input.title, topic: input.topic, visibility: input.visibility,
+      ownerKeyId: input.ownerKeyId, status: 'active', inviteCode: input.inviteCode,
+      cooldownMs: input.cooldownMs, maxAgents: input.maxAgents, createdAt: input.at,
+    };
+  }
+
+  ensureLobby(input: { title: string; maxAgents: number; at: string }): RoomRow {
+    const existing = this.getRoom('lobby');
+    if (existing) return existing;
+    return this.insertRoom({
+      id: 'lobby', title: input.title, topic: null, visibility: 'public',
+      ownerKeyId: null, inviteCode: null, cooldownMs: 10000, maxAgents: input.maxAgents, at: input.at,
+    });
+  }
+
+  createRoom(input: {
+    id: string; title: string; topic: string | null;
+    visibility: 'public' | 'private'; ownerKeyId: string;
+    inviteCode: string | null; cooldownMs: number; maxAgents: number; at: string;
+  }): RoomRow {
+    return this.insertRoom(input);
+  }
+
+  getRoom(id: string): RoomRow | undefined {
+    const r = this.db.prepare(`SELECT * FROM rooms WHERE id = ?`).get(id);
+    return r ? this.mapRoom(r) : undefined;
+  }
+
+  getRoomByInviteCode(code: string): RoomRow | undefined {
+    const r = this.db.prepare(`SELECT * FROM rooms WHERE invite_code = ?`).get(code);
+    return r ? this.mapRoom(r) : undefined;
+  }
+
+  listRooms(visibility?: 'public' | 'private'): RoomRow[] {
+    const rows = visibility
+      ? this.db.prepare(`SELECT * FROM rooms WHERE visibility = ? ORDER BY created_at`).all(visibility)
+      : this.db.prepare(`SELECT * FROM rooms ORDER BY created_at`).all();
+    return (rows as any[]).map((r) => this.mapRoom(r));
+  }
+
+  updateRoom(
+    id: string,
+    patch: Partial<Pick<RoomRow, 'title' | 'topic' | 'status' | 'cooldownMs' | 'maxAgents'>>,
+  ): RoomRow {
+    const col: Record<string, string> = {
+      title: 'title', topic: 'topic', status: 'status',
+      cooldownMs: 'cooldown_ms', maxAgents: 'max_agents',
+    };
+    for (const [k, v] of Object.entries(patch)) {
+      this.db.prepare(`UPDATE rooms SET ${col[k]} = ? WHERE id = ?`).run(v, id);
+    }
+    return this.getRoom(id)!;
+  }
+
+  // ---------- room_agents ----------
+
+  addRoomAgent(roomId: string, agentId: string, status: 'active' | 'waiting', at: string): void {
+    this.db.prepare(
+      `INSERT INTO room_agents (room_id, agent_id, status, joined_at) VALUES (?, ?, ?, ?)`,
+    ).run(roomId, agentId, status, at);
+  }
+
+  getRoomAgent(roomId: string, agentId: string): RoomAgentRow | undefined {
+    const r = this.db.prepare(
+      `SELECT * FROM room_agents WHERE room_id = ? AND agent_id = ?`,
+    ).get(roomId, agentId);
+    return r ? this.mapRoomAgent(r) : undefined;
+  }
+
+  setRoomAgentStatus(roomId: string, agentId: string, status: RoomAgentRow['status']): void {
+    this.db.prepare(
+      `UPDATE room_agents SET status = ? WHERE room_id = ? AND agent_id = ?`,
+    ).run(status, roomId, agentId);
+  }
+
+  removeRoomAgent(roomId: string, agentId: string): void {
+    this.db.prepare(
+      `DELETE FROM room_agents WHERE room_id = ? AND agent_id = ?`,
+    ).run(roomId, agentId);
+  }
+
+  listRoomAgents(roomId: string): RoomAgentRow[] {
+    return (
+      this.db.prepare(`SELECT * FROM room_agents WHERE room_id = ? ORDER BY joined_at`).all(roomId) as any[]
+    ).map((r) => this.mapRoomAgent(r));
+  }
+
+  listWaitingAgents(roomId: string): RoomAgentRow[] {
+    return (
+      this.db.prepare(
+        `SELECT * FROM room_agents WHERE room_id = ? AND status = 'waiting' ORDER BY joined_at`,
+      ).all(roomId) as any[]
+    ).map((r) => this.mapRoomAgent(r));
+  }
+
+  listRoomsOfAgent(agentId: string): RoomAgentRow[] {
+    return (
+      this.db.prepare(`SELECT * FROM room_agents WHERE agent_id = ?`).all(agentId) as any[]
+    ).map((r) => this.mapRoomAgent(r));
+  }
+
+  countRoomAgents(roomId: string, status: RoomAgentRow['status']): number {
+    return (
+      this.db.prepare(
+        `SELECT COUNT(*) AS c FROM room_agents WHERE room_id = ? AND status = ?`,
+      ).get(roomId, status) as any
+    ).c;
+  }
+
+  countKeyAgentsInRoom(roomId: string, keyId: string): number {
+    return (
+      this.db.prepare(
+        `SELECT COUNT(*) AS c FROM room_agents ra JOIN agents a ON a.id = ra.agent_id
+         WHERE ra.room_id = ? AND a.key_id = ? AND ra.status IN ('active', 'waiting')`,
+      ).get(roomId, keyId) as any
+    ).c;
+  }
+
+  // ---------- members ----------
+
+  addMember(roomId: string, keyId: string, role: 'host' | 'member', at: string): void {
+    this.db.prepare(
+      `INSERT INTO room_members (room_id, key_id, role, joined_at) VALUES (?, ?, ?, ?)`,
+    ).run(roomId, keyId, role, at);
+  }
+
+  getMember(roomId: string, keyId: string): RoomMemberRow | undefined {
+    const r = this.db.prepare(
+      `SELECT * FROM room_members WHERE room_id = ? AND key_id = ?`,
+    ).get(roomId, keyId) as any;
+    return r
+      ? { roomId: r.room_id, keyId: r.key_id, role: r.role, joinedAt: r.joined_at }
+      : undefined;
+  }
+
+  removeMember(roomId: string, keyId: string): void {
+    this.db.prepare(
+      `DELETE FROM room_members WHERE room_id = ? AND key_id = ?`,
+    ).run(roomId, keyId);
   }
 }
