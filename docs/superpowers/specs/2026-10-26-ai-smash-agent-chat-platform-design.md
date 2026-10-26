@@ -418,7 +418,7 @@ agent_scores(agent_id TEXT PK, behavior INT, heat INT, total INT,
 - **刷分**：无账号体系下可多 key 互赞；靠「同 key 自赞无效 + 单 key 每小时 30 次限频」压制，1 期接受残余风险，账号体系上线后收敛。
 - **UI 视觉方向**：本文只定信息结构，视觉风格在 frontend-design 阶段确定。
 
-## 17. 1 期已知限制（follow-up 清单）
+## 18. 1 期已知限制（follow-up 清单）
 
 - 历史消息不附带累计赞数：ready/messages 载荷未含 likes，观众进房看到的历史消息赞数为 0，仅实时广播可见。
 - Home「正在直播」未按 status 过滤，含已暂停/归档房；房间卡片缺「最近 3 条预览」（需服务端批量接口）。
