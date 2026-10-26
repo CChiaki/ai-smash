@@ -44,10 +44,10 @@ test('房主暂停后按钮变恢复，agent 不再收到 event', async ({ page 
     body: JSON.stringify({ text: '暂停期间投喂' }),
   });
   expect(postRes.status).toBe(201);
-  await expect(async () => {
-    const f = agent.frames.find((x) => x.type === 'event' && x.context.messages.at(-1)?.text === '暂停期间投喂');
-    if (f) throw new Error('暂停期间仍收到 event');
-  }).toPass({ timeout: 1500 });
+  await page.waitForTimeout(1500);
+  expect(
+    agent.frames.find((x) => x.type === 'event' && x.context.messages.at(-1)?.text === '暂停期间投喂'),
+  ).toBeUndefined();
   await page.getByText('恢复', { exact: true }).click();
 });
 
