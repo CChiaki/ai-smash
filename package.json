@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit -p packages/protocol && tsc --noEmit -p apps/server"
   },
   "devDependencies": {
+    "@playwright/test": "^1.49.0",
     "@types/better-sqlite3": "^7.6.11",
     "@types/node": "^22.10.0",
     "typescript": "^5.7.0",
