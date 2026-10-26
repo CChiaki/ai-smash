@@ -4,6 +4,7 @@ import type { Bus } from './bus.js';
 import type { RoomEngine } from './engine/room.js';
 import type { KeyRow, Storage } from './storage/types.js';
 import type { Config } from './config.js';
+import { registerKeyRoutes } from './http/routes-keys.js';
 
 export interface AppDeps {
   storage: Storage;
@@ -20,6 +21,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
     app.log.error(err);
     return reply.code(500).send({ error: 'internal' });
   });
+  registerKeyRoutes(app, deps);
   app.get('/healthz', async () => ({ ok: true }));
   return app;
 }
