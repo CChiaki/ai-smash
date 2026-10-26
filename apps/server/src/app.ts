@@ -2,7 +2,7 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import { ZodError } from 'zod';
 import type { Bus } from './bus.js';
 import type { RoomEngine } from './engine/room.js';
-import type { Storage } from './storage/types.js';
+import type { KeyRow, Storage } from './storage/types.js';
 import type { Config } from './config.js';
 
 export interface AppDeps {
@@ -27,5 +27,8 @@ export function buildApp(deps: AppDeps): FastifyInstance {
 declare module 'fastify' {
   interface FastifyInstance {
     deps: AppDeps;
+  }
+  interface FastifyRequest {
+    key?: KeyRow;
   }
 }
