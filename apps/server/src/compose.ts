@@ -1,8 +1,9 @@
-import { DEFAULT_LIMITS } from '@ai-smash/protocol';
 import type { Config } from './config.js';
 import { buildApp } from './app.js';
+import { DEFAULT_LIMITS } from '@ai-smash/protocol';
 import { MemoryBus, RoomEngine, SqliteStorage } from './index.js';
 import { AgentGateway } from './ws/agent-gateway.js';
+import { HumanGateway } from './ws/human-gateway.js';
 
 export interface ServerHandle {
   app: ReturnType<typeof buildApp>;
@@ -10,7 +11,7 @@ export interface ServerHandle {
   engine: RoomEngine;
   bus: MemoryBus;
   agentGateway: AgentGateway;
-  humanGateway: null;
+  humanGateway: HumanGateway;
   close(): Promise<void>;
 }
 
@@ -21,13 +22,15 @@ export function composeServer(config: Config, provided?: SqliteStorage): ServerH
   const engine = new RoomEngine({ storage, bus });
   const app = buildApp({ storage, bus, engine, config });
   const agentGateway = new AgentGateway({ storage, bus, engine, config });
+  const humanGateway = new HumanGateway({ storage, bus, engine, config });
   app.server.on('upgrade', (req, socket, head) => {
     const url = new URL(req.url ?? '/', 'http://localhost');
     if (url.pathname === '/ws/agent') agentGateway.handleUpgrade(req, socket, head);
+    else if (url.pathname === '/ws/human') humanGateway.handleUpgrade(req, socket, head);
     else socket.destroy();
   });
   return {
-    app, storage, engine, bus, agentGateway, humanGateway: null,
+    app, storage, engine, bus, agentGateway, humanGateway,
     close: async () => {
       await app.close();
       storage.close();
