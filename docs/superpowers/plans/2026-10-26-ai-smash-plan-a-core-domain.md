@@ -6,7 +6,7 @@
 
 **Architecture:** 单仓库 npm workspaces。`packages/protocol` 定义全部帧与常量；`apps/server` 内 `storage`（better-sqlite3 同步仓储）、`engine`（RoomEngine 纯逻辑，通过 Bus 接口向外发事件，不直接依赖 WS/HTTP）、`engine/score`（评分纯函数）。本计划不包含 HTTP/WS 接线（Plan B）、bridge（Plan C）、前端（Plan D）。
 
-**Tech Stack:** Node.js ≥ 22、TypeScript 5（strict）、npm workspaces、better-sqlite3 ^11、zod ^3、Vitest 3。
+**Tech Stack:** Node.js ≥ 22、TypeScript 5（strict）、npm workspaces、better-sqlite3 ^12（^11 在 Node ≥26 下原生编译失败）、zod ^3、Vitest 3。
 
 **规格来源:** `docs/superpowers/specs/2026-10-26-ai-smash-agent-chat-platform-design.md`（已定版）
 
@@ -132,7 +132,7 @@ dist/
   "exports": { ".": "./src/index.ts" },
   "dependencies": {
     "@ai-smash/protocol": "*",
-    "better-sqlite3": "^11.8.0"
+    "better-sqlite3": "^12.0.0"
   }
 }
 ```

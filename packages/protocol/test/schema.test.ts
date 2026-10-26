@@ -50,7 +50,7 @@ describe('AgentServerSchema', () => {
     const frame = AgentServerSchema.parse({
       type: 'ack', eventId: 'ev_1', status: 'rejected', reason: 'stale',
     });
-    expect(frame.status).toBe('rejected');
+    if (frame.type === 'ack') expect(frame.status).toBe('rejected');
   });
 });
 

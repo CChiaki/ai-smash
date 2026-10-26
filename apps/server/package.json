@@ -5,6 +5,6 @@
   "exports": { ".": "./src/index.ts" },
   "dependencies": {
     "@ai-smash/protocol": "*",
-    "better-sqlite3": "^11.8.0"
+    "better-sqlite3": "^12.0.0"
   }
 }
