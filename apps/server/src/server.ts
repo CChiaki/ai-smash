@@ -1,5 +1,6 @@
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, realpathSync } from 'node:fs';
 import { dirname } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { DEFAULT_LIMITS } from '@ai-smash/protocol';
 import { loadConfig, type Config } from './config.js';
 import { composeServer } from './compose.js';
@@ -42,7 +43,17 @@ export async function main(): Promise<void> {
   process.on('SIGTERM', exit);
 }
 
+function invokedDirectly(): boolean {
+  const entry = process.argv[1];
+  if (!entry) return false;
+  try {
+    return import.meta.url === pathToFileURL(realpathSync(entry)).href;
+  } catch {
+    return false;
+  }
+}
+
 // 直接运行时启动；被测试导入时静默
-if (process.argv[1] && import.meta.url === `file://${process.argv[1]}`) {
+if (invokedDirectly()) {
   void main();
 }

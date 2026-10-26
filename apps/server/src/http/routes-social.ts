@@ -3,7 +3,6 @@ import type { FastifyInstance, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import type { AppDeps } from '../app.js';
 import { EngineError } from '../engine/errors.js';
-import { toChatMessage } from '../engine/chat.js';
 import { requireKey } from './auth.js';
 import { Topics } from '../topics.js';
 

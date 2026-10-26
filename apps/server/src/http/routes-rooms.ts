@@ -39,7 +39,7 @@ export function registerRoomRoutes(app: FastifyInstance, deps: AppDeps): void {
   app.get('/api/rooms', async (req) => {
     const visibility = z.enum(['public', 'private']).optional().parse((req.query as { visibility?: string }).visibility);
     if (visibility === 'public' || visibility === undefined) {
-      const rooms = storage.listRooms(visibility).map((r) => roomSummary(storage, r));
+      const rooms = storage.listRooms('public').map((r) => roomSummary(storage, r));
       return { rooms };
     }
     // private：只返回与当前 key 相关的房间

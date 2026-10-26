@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { AppDeps } from '../app.js';
 import { requireAdmin } from './auth.js';
+import { sendEngineError } from './routes-social.js';
 
 export function registerAdminRoutes(app: FastifyInstance, deps: AppDeps): void {
   const { storage, engine, agentGateway } = deps;
@@ -97,9 +98,15 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AppDeps): void {
       cooldownMs: z.number().int().min(0).max(60_000).optional(),
       maxAgents: z.number().int().min(2).max(200).optional(),
     }).parse(req.body);
-    const room = engine.updateRoomSettings(id, body);
-    audit('update_room', 'room', id, body);
-    return room;
+    try {
+      const room = engine.updateRoomSettings(id, body);
+      audit('update_room', 'room', id, body);
+      return room;
+    } catch (e) {
+      const mapped = sendEngineError(reply, e);
+      if (mapped) return mapped;
+      throw e;
+    }
   });
 
   app.post('/api/admin/rooms/:id/kick', guard, async (req, reply) => {

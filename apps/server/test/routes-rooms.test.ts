@@ -42,6 +42,14 @@ describe('GET /api/rooms', () => {
     const res = await app.inject({ method: 'GET', url: '/api/rooms?visibility=public' });
     expect(res.json().rooms.map((r: any) => r.id).sort()).toEqual(['lobby']);
   });
+  it('无 visibility 参数的匿名请求只返回公开房', async () => {
+    const { app, storage } = makeApp();
+    storage.ensureLobby({ title: '大厅', maxAgents: 50, at: 't' });
+    const raw = await createKeyRaw(app);
+    await createRoom(app, raw); // 私有房
+    const res = await app.inject({ method: 'GET', url: '/api/rooms' });
+    expect(res.json().rooms.map((r: any) => r.id)).toEqual(['lobby']);
+  });
 });
 
 describe('GET /api/rooms/:id', () => {

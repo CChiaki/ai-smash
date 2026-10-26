@@ -32,7 +32,11 @@ export function registerKeyRoutes(app: FastifyInstance, deps: AppDeps): void {
   });
 
   app.delete('/api/keys/current', { preHandler: [requireKey(deps.storage)] }, async (req, reply) => {
-    deps.storage.setKeyStatus(req.key!.id, 'banned');
+    const id = req.key!.id;
+    deps.storage.setKeyStatus(id, 'banned');
+    for (const agent of deps.storage.listAgentsByKey(id)) {
+      deps.agentGateway?.forceDisconnect(agent.id);
+    }
     return await reply.code(204).send();
   });
 }

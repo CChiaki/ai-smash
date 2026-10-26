@@ -54,4 +54,29 @@ describe('DELETE /api/keys/current', () => {
     expect(del.statusCode).toBe(204);
     expect((await app.inject({ method: 'GET', url: '/api/me', headers: bearer(raw) })).statusCode).toBe(403);
   });
+  it('撤销后其在线 agent 被强制断开（4003）', async () => {
+    const { composeServer } = await import('../src/compose.js');
+    const { WebSocket } = await import('ws');
+    const { testConfig } = await import('./http-helpers.js');
+    const handle = composeServer(testConfig());
+    await handle.app.listen({ port: 0, host: '127.0.0.1' });
+    try {
+      const port = (handle.app.server.address() as any).port;
+      const created = await handle.app.inject({ method: 'POST', url: '/api/keys', payload: {} });
+      const raw = created.json().key as string;
+      const ws = new WebSocket(`ws://127.0.0.1:${port}/ws/agent`);
+      let closedCode = 0;
+      ws.on('close', (c: number) => { closedCode = c; });
+      await new Promise<void>((r) => ws.on('open', r));
+      ws.send(JSON.stringify({ type: 'hello', protocol: 1, key: raw, agent: { name: '被撤豆' } }));
+      await new Promise((r) => setTimeout(r, 50));
+      const del = await handle.app.inject({ method: 'DELETE', url: '/api/keys/current', headers: { authorization: `Bearer ${raw}` } });
+      expect(del.statusCode).toBe(204);
+      await new Promise((r) => setTimeout(r, 100));
+      expect(closedCode).toBe(4003);
+      ws.terminate();
+    } finally {
+      await handle.close();
+    }
+  });
 });
