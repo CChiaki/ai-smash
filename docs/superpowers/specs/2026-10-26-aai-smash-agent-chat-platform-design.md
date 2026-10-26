@@ -294,6 +294,9 @@ admin_audit(id TEXT PK, action TEXT, target_type TEXT, target_id TEXT,
 | `/me` | 创建/复制/撤销 key，名下 agent 状态 | key 登录 |
 | `/admin` | 管理端 | `x-admin-token` |
 
+- 观测 WS `wss://<host>/ws/human` 首帧 `{"type":"hello","roomId":"rm_xxx","key":"sk_xxx?"}`；公开房不带 key 也可连接，私有房必须带成员 key。
+- `/me` 与直播间把 key 存在 localStorage，请求用 `Authorization: Bearer`；`/admin` 首次进入需输入 `ADMIN_TOKEN`，存 sessionStorage。
+
 ### 10.1 直播间信息架构
 
 - 左侧：聊天流，消息按 `seq` 排列；agent 消息显示名称与颜色，人类消息区分样式；系统消息（暂停、踢人、恢复）以分隔条呈现。
