@@ -1,7 +1,8 @@
 import Database from 'better-sqlite3';
 import { newId } from '../ids.js';
 import type {
-  AgentRow, KeyRow, RoomAgentRow, RoomMemberRow, RoomRow,
+  AgentRow, EventMetrics, EventRow, KeyRow, MessageRow,
+  NewEventInput, NewMessageInput, RoomAgentRow, RoomMemberRow, RoomRow,
 } from './types.js';
 
 const SCHEMA = `
@@ -341,5 +342,144 @@ export class SqliteStorage {
     this.db.prepare(
       `DELETE FROM room_members WHERE room_id = ? AND key_id = ?`,
     ).run(roomId, keyId);
+  }
+
+  // ---------- 行映射 ----------
+
+  private mapMessage(r: any): MessageRow {
+    return {
+      id: r.id, roomId: r.room_id, seq: r.seq, senderKind: r.sender_kind,
+      senderName: r.sender_name, agentId: r.agent_id, keyId: r.key_id,
+      text: r.text, replyTo: r.reply_to, deletedAt: r.deleted_at, createdAt: r.created_at,
+    };
+  }
+
+  // ---------- messages ----------
+
+  insertMessage(input: NewMessageInput): MessageRow {
+    const id = newId('m');
+    const seq = (
+      this.db.prepare(`SELECT COALESCE(MAX(seq), 0) AS s FROM messages WHERE room_id = ?`)
+        .get(input.roomId) as any
+    ).s + 1;
+    this.db.prepare(
+      `INSERT INTO messages (id, room_id, seq, sender_kind, sender_name, agent_id, key_id, text, reply_to, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).run(
+      id, input.roomId, seq, input.senderKind, input.senderName,
+      input.agentId, input.keyId, input.text, input.replyTo, input.createdAt,
+    );
+    return {
+      id, roomId: input.roomId, seq, senderKind: input.senderKind, senderName: input.senderName,
+      agentId: input.agentId, keyId: input.keyId, text: input.text,
+      replyTo: input.replyTo, deletedAt: null, createdAt: input.createdAt,
+    };
+  }
+
+  getMessage(id: string): MessageRow | undefined {
+    const r = this.db.prepare(`SELECT * FROM messages WHERE id = ?`).get(id);
+    return r ? this.mapMessage(r) : undefined;
+  }
+
+  listMessages(roomId: string, opts?: { afterSeq?: number; limit?: number }): MessageRow[] {
+    const limit = opts?.limit ?? 200;
+    const rows = opts?.afterSeq !== undefined
+      ? this.db.prepare(
+          `SELECT * FROM messages WHERE room_id = ? AND seq > ? ORDER BY seq ASC LIMIT ?`,
+        ).all(roomId, opts.afterSeq, limit)
+      : this.db.prepare(
+          `SELECT * FROM (SELECT * FROM messages WHERE room_id = ? ORDER BY seq DESC LIMIT ?) ORDER BY seq ASC`,
+        ).all(roomId, limit);
+    return (rows as any[]).map((r) => this.mapMessage(r));
+  }
+
+  softDeleteMessage(id: string, at: string): void {
+    this.db.prepare(`UPDATE messages SET deleted_at = ? WHERE id = ?`).run(at, id);
+  }
+
+  countRepliesTo(agentId: string, sinceIso: string): number {
+    return (
+      this.db.prepare(
+        `SELECT COUNT(*) AS c FROM messages r JOIN messages m ON r.reply_to = m.id
+         WHERE m.agent_id = ? AND r.created_at >= ?`,
+      ).get(agentId, sinceIso) as any
+    ).c;
+  }
+
+  // ---------- events ----------
+
+  insertEvent(input: NewEventInput): void {
+    this.db.prepare(
+      `INSERT INTO events (id, room_id, agent_id, trigger_message_id, notified_at)
+       VALUES (?, ?, ?, ?, ?)`,
+    ).run(input.id, input.roomId, input.agentId, input.triggerMessageId, input.notifiedAt);
+  }
+
+  getEvent(id: string): EventRow | undefined {
+    const r = this.db.prepare(`SELECT * FROM events WHERE id = ?`).get(id) as any;
+    return r
+      ? {
+          id: r.id, roomId: r.room_id, agentId: r.agent_id,
+          triggerMessageId: r.trigger_message_id, status: r.status, reason: r.reason,
+          notifiedAt: r.notified_at, decidedAt: r.decided_at, latencyMs: r.latency_ms,
+        }
+      : undefined;
+  }
+
+  decideEvent(
+    id: string, status: EventRow['status'], reason: string | null,
+    decidedAt: string, latencyMs: number | null,
+  ): void {
+    this.db.prepare(
+      `UPDATE events SET status = ?, reason = ?, decided_at = ?, latency_ms = ? WHERE id = ?`,
+    ).run(status, reason, decidedAt, latencyMs, id);
+  }
+
+  markAllDeliveredAsTimeout(at: string): number {
+    const r = this.db.prepare(
+      `UPDATE events SET status = 'timeout', reason = 'server_restart', decided_at = ? WHERE status = 'delivered'`,
+    ).run(at);
+    return r.changes;
+  }
+
+  eventMetrics(agentId: string, sinceIso: string): EventMetrics {
+    const m: EventMetrics = {
+      delivered: 0, posted: 0, skipped: 0, timeout: 0, rejected: 0, throttled: 0, latencies: [],
+    };
+    for (const r of this.db.prepare(
+      `SELECT status, COUNT(*) AS c FROM events WHERE agent_id = ? AND notified_at >= ? GROUP BY status`,
+    ).all(agentId, sinceIso) as any[]) {
+      if (r.status in m) (m as any)[r.status] = r.c;
+    }
+    // delivered = 派发总数（含已决事件），与规格「响应率 = 1 − (timeout+rejected)/delivered」分母一致；
+    // GROUP BY status 只统计仍为 delivered 的未决事件，因此这里单独取总数。
+    m.delivered = (
+      this.db.prepare(
+        `SELECT COUNT(*) AS c FROM events WHERE agent_id = ? AND notified_at >= ?`,
+      ).get(agentId, sinceIso) as any
+    ).c;
+    m.throttled = (
+      this.db.prepare(
+        `SELECT COUNT(*) AS c FROM events
+         WHERE agent_id = ? AND status = 'rejected' AND reason = 'throttled' AND notified_at >= ?`,
+      ).get(agentId, sinceIso) as any
+    ).c;
+    m.latencies = (
+      this.db.prepare(
+        `SELECT latency_ms FROM events
+         WHERE agent_id = ? AND status = 'posted' AND notified_at >= ? AND latency_ms IS NOT NULL
+         ORDER BY latency_ms LIMIT 500`,
+      ).all(agentId, sinceIso) as any[]
+    ).map((r) => r.latency_ms);
+    return m;
+  }
+
+  lastPostedLatency(agentId: string): number | null {
+    const r = this.db.prepare(
+      `SELECT latency_ms FROM events
+       WHERE agent_id = ? AND status = 'posted' AND latency_ms IS NOT NULL
+       ORDER BY notified_at DESC LIMIT 1`,
+    ).get(agentId) as any;
+    return r ? r.latency_ms : null;
   }
 }
