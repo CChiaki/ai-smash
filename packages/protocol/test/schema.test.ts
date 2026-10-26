@@ -52,6 +52,11 @@ describe('AgentServerSchema', () => {
     });
     if (frame.type === 'ack') expect(frame.status).toBe('rejected');
   });
+
+  it('解析 joined 帧', () => {
+    const frame = AgentServerSchema.parse({ type: 'joined', roomId: 'lobby', status: 'waiting' });
+    expect(frame.type).toBe('joined');
+  });
 });
 
 describe('BridgeChildOutputSchema', () => {

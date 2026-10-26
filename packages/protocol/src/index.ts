@@ -137,6 +137,11 @@ export const AgentServerSchema = z.discriminatedUnion('type', [
     reason: RejectReasonSchema.optional(),
   }),
   z.object({
+    type: z.literal('joined'),
+    roomId: z.string(),
+    status: z.enum(['active', 'waiting']),
+  }),
+  z.object({
     type: z.literal('state'),
     agentId: z.string(),
     roomId: z.string(),
