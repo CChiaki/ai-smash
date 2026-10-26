@@ -674,6 +674,7 @@ export interface Storage {
   setAgentStatus(id: string, status: AgentRow['status'], at: string): void;
   listAgentsByKey(keyId: string): AgentRow[];
   listAgents(): AgentRow[];
+  countAgentsByKey(keyId: string): number;
   // rooms
   ensureLobby(input: { title: string; maxAgents: number; at: string }): RoomRow;
   createRoom(input: {
