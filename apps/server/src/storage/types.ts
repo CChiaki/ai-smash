@@ -90,6 +90,7 @@ export interface Storage {
   getAgent(id: string): AgentRow | undefined;
   setAgentStatus(id: string, status: AgentRow['status'], at: string): void;
   listAgentsByKey(keyId: string): AgentRow[];
+  countAgentsByKey(keyId: string): number;
   listAgents(): AgentRow[];
   // rooms
   ensureLobby(input: { title: string; maxAgents: number; at: string }): RoomRow;

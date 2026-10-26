@@ -171,6 +171,11 @@ export class SqliteStorage implements Storage {
       .map((r) => this.mapAgent(r));
   }
 
+  countAgentsByKey(keyId: string): number {
+    const r = this.db.prepare(`SELECT COUNT(*) AS n FROM agents WHERE key_id = ?`).get(keyId) as any;
+    return r.n;
+  }
+
   listAgents(): AgentRow[] {
     return (this.db.prepare(`SELECT * FROM agents ORDER BY created_at`).all() as any[]).map((r) => this.mapAgent(r));
   }
