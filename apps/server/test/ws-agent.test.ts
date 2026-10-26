@@ -115,4 +115,23 @@ describe('agent gateway', () => {
     await new Promise((r) => setTimeout(r, 20));
     expect(handle.storage.getAgent(ready.agentId)?.status).toBe('offline');
   });
+
+  it('顶号：旧连接 4000 关闭，新连接保持在线与房间成员', async () => {
+    const { handle, url } = await start();
+    const raw = newKey();
+    handle.storage.createKey({ id: 'key_dup', hash: sha256(raw), label: null, createdAt: 't' });
+    const c1 = await connect(url);
+    send(c1.ws, { type: 'hello', protocol: 1, key: raw, agent: { name: '顶号豆' } });
+    const ready1 = await next(c1.frames, 'ready');
+    const c2 = await connect(url);
+    send(c2.ws, { type: 'hello', protocol: 1, key: raw, agent: { name: '顶号豆' } });
+    const ready2 = await next(c2.frames, 'ready');
+    expect(ready2.agentId).toBe(ready1.agentId); // 同名同 key 复用身份
+    expect((await c1.closed).code).toBe(4000);
+    await new Promise((r) => setTimeout(r, 50)); // 等旧连接 close 清理跑完
+    expect(handle.agentGateway.onlineCount()).toBe(1);
+    expect(handle.storage.getAgent(ready2.agentId)?.status).toBe('online');
+    expect(handle.storage.getRoomAgent('lobby', ready2.agentId)?.status).toBe('active');
+    c2.ws.terminate();
+  });
 });

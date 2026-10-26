@@ -151,6 +151,7 @@ export class AgentGateway {
     ws.on('close', () => {
       clearInterval(heartbeat);
       if (!agentId) return;
+      if (this.sockets.get(agentId) !== ws) return; // 已被新连接顶替，清理归新连接
       this.sockets.delete(agentId);
       this.deps.storage.setAgentStatus(agentId, 'offline', now());
       for (const ra of this.deps.storage.listRoomsOfAgent(agentId)) {
