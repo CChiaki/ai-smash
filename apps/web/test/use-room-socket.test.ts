@@ -29,7 +29,7 @@ const readyFrame = {
   room: { id: 'lobby', title: '大厅', topic: null, visibility: 'public', status: 'active', onlineAgents: 0, maxAgents: 50 },
   messages: [],
   agents: [],
-  you: null,
+  you: { keyId: 'k_1', name: '阿伟', isOwner: true },
 };
 
 describe('useRoomSocket', () => {
@@ -44,6 +44,7 @@ describe('useRoomSocket', () => {
     expect(ws.sent[0]).toMatchObject({ type: 'hello', roomId: 'lobby', key: 'sk_tok' });
     act(() => ws.receive(readyFrame));
     expect(result.current.state.ready).toBe(true);
+    expect(result.current.state.you?.isOwner).toBe(true); // ready you 帧进入 state
     act(() => result.current.sendPost('大家好'));
     expect(ws.sent.at(-1)).toMatchObject({ type: 'post', text: '大家好' });
   });
@@ -68,5 +69,19 @@ describe('useRoomSocket', () => {
     const ws2 = FakeWebSocket.instances.at(-1)!;
     act(() => ws2.open());
     expect(result.current.connected).toBe(true);
+  });
+
+  it('卸载后清掉待触发的重连定时器（不再幽灵重连）', async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal('WebSocket', FakeWebSocket);
+    const { useRoomSocket } = await import('../src/useRoomSocket.js');
+    const { unmount } = renderHook(() => useRoomSocket('lobby'));
+    const ws = FakeWebSocket.instances.at(-1)!;
+    act(() => ws.open());
+    act(() => ws.close()); // onclose 调度 1000ms 后重连
+    expect(FakeWebSocket.instances.length).toBe(1);
+    unmount(); // cleanup 应 clearTimeout
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(FakeWebSocket.instances.length).toBe(1); // 未新建连接
   });
 });

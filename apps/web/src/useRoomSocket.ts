@@ -3,14 +3,16 @@ import { HumanServerSchema } from '@ai-smash/protocol';
 import { getToken } from './auth.js';
 import { initialRoomState, roomReducer } from './room-reducer.js';
 
-export function useRoomSocket(roomId: string) {
+export function useRoomSocket(roomId: string | null) {
   const [state, dispatch] = useReducer(roomReducer, initialRoomState);
   const [connected, setConnected] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   const backoffRef = useRef(1000);
   const closedRef = useRef(false);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    if (!roomId) return; // 回放模式不连 WS
     closedRef.current = false;
     dispatch({ type: 'reset' });
     const connect = (): void => {
@@ -34,7 +36,7 @@ export function useRoomSocket(roomId: string) {
         if (!parsed.success) return;
         const f = parsed.data;
         if (f.type === 'ready') {
-          dispatch({ type: 'ready', room: f.room, messages: f.messages, agents: f.agents });
+          dispatch({ type: 'ready', room: f.room, messages: f.messages, agents: f.agents, you: f.you });
         } else if (f.type === 'message') {
           dispatch({ type: 'message', message: f.message });
         } else if (f.type === 'presence') {
@@ -50,12 +52,16 @@ export function useRoomSocket(roomId: string) {
         if (closedRef.current) return;
         const delay = backoffRef.current;
         backoffRef.current = Math.min(backoffRef.current * 2, 10_000);
-        setTimeout(connect, delay);
+        reconnectTimerRef.current = setTimeout(connect, delay);
       };
     };
     connect();
     return () => {
       closedRef.current = true;
+      if (reconnectTimerRef.current !== null) {
+        clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
+      }
       wsRef.current?.close();
     };
   }, [roomId]);
