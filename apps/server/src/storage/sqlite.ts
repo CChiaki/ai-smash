@@ -1,8 +1,9 @@
 import Database from 'better-sqlite3';
 import { newId } from '../ids.js';
 import type {
-  AgentRow, EventMetrics, EventRow, KeyRow, MessageRow,
+  AgentRow, AuditInput, AuditRow, EventMetrics, EventRow, KeyRow, MessageRow,
   NewEventInput, NewMessageInput, RoomAgentRow, RoomMemberRow, RoomRow,
+  ScoreRow, StatsPatch, Storage,
 } from './types.js';
 
 const SCHEMA = `
@@ -72,7 +73,7 @@ CREATE INDEX IF NOT EXISTS idx_reactions_message ON reactions(message_id);
 CREATE INDEX IF NOT EXISTS idx_reactions_key_time ON reactions(key_id, created_at);
 `;
 
-export class SqliteStorage {
+export class SqliteStorage implements Storage {
   private db: Database.Database;
 
   constructor(path: string) {
@@ -481,5 +482,126 @@ export class SqliteStorage {
        ORDER BY notified_at DESC LIMIT 1`,
     ).get(agentId) as any;
     return r ? r.latency_ms : null;
+  }
+
+  // ---------- reactions ----------
+
+  addReaction(messageId: string, keyId: string, at: string): boolean {
+    try {
+      this.db.prepare(
+        `INSERT INTO reactions (message_id, key_id, created_at) VALUES (?, ?, ?)`,
+      ).run(messageId, keyId, at);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  countLikes(messageId: string): number {
+    return (
+      this.db.prepare(`SELECT COUNT(*) AS c FROM reactions WHERE message_id = ?`)
+        .get(messageId) as any
+    ).c;
+  }
+
+  countLikesByAgent(agentId: string, sinceIso: string): number {
+    return (
+      this.db.prepare(
+        `SELECT COUNT(*) AS c FROM reactions r JOIN messages m ON m.id = r.message_id
+         WHERE m.agent_id = ? AND r.created_at >= ?`,
+      ).get(agentId, sinceIso) as any
+    ).c;
+  }
+
+  countLikesByKeySince(keyId: string, sinceIso: string): number {
+    return (
+      this.db.prepare(
+        `SELECT COUNT(*) AS c FROM reactions WHERE key_id = ? AND created_at >= ?`,
+      ).get(keyId, sinceIso) as any
+    ).c;
+  }
+
+  // ---------- stats & scores ----------
+
+  bumpStats(agentId: string, patch: StatsPatch): void {
+    this.db.prepare(
+      `INSERT INTO agent_stats (agent_id, delivered, posted, skipped, timeout, rejected, throttled, replies_received, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(agent_id) DO UPDATE SET
+         delivered = delivered + excluded.delivered,
+         posted = posted + excluded.posted,
+         skipped = skipped + excluded.skipped,
+         timeout = timeout + excluded.timeout,
+         rejected = rejected + excluded.rejected,
+         throttled = throttled + excluded.throttled,
+         replies_received = replies_received + excluded.replies_received,
+         updated_at = excluded.updated_at`,
+    ).run(
+      agentId, patch.delivered ?? 0, patch.posted ?? 0, patch.skipped ?? 0,
+      patch.timeout ?? 0, patch.rejected ?? 0, patch.throttled ?? 0,
+      patch.repliesReceived ?? 0, new Date().toISOString(),
+    );
+  }
+
+  getStats(agentId: string): Required<StatsPatch> & { agentId: string } {
+    const r = this.db.prepare(`SELECT * FROM agent_stats WHERE agent_id = ?`).get(agentId) as any;
+    if (!r) {
+      return {
+        agentId, delivered: 0, posted: 0, skipped: 0,
+        timeout: 0, rejected: 0, throttled: 0, repliesReceived: 0,
+      };
+    }
+    return {
+      agentId, delivered: r.delivered, posted: r.posted, skipped: r.skipped,
+      timeout: r.timeout, rejected: r.rejected, throttled: r.throttled,
+      repliesReceived: r.replies_received,
+    };
+  }
+
+  upsertScore(row: ScoreRow): void {
+    this.db.prepare(
+      `INSERT INTO agent_scores (agent_id, behavior, heat, total, tier, likes_7d, computed_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(agent_id) DO UPDATE SET
+         behavior = excluded.behavior, heat = excluded.heat, total = excluded.total,
+         tier = excluded.tier, likes_7d = excluded.likes_7d, computed_at = excluded.computed_at`,
+    ).run(row.agentId, row.behavior, row.heat, row.total, row.tier, row.likes7d, row.computedAt);
+  }
+
+  getScore(agentId: string): ScoreRow | undefined {
+    const r = this.db.prepare(`SELECT * FROM agent_scores WHERE agent_id = ?`).get(agentId) as any;
+    return r
+      ? {
+          agentId: r.agent_id, behavior: r.behavior, heat: r.heat, total: r.total,
+          tier: r.tier, likes7d: r.likes_7d, computedAt: r.computed_at,
+        }
+      : undefined;
+  }
+
+  topScores(n: number): ScoreRow[] {
+    return (
+      this.db.prepare(`SELECT * FROM agent_scores ORDER BY total DESC LIMIT ?`).all(n) as any[]
+    ).map((r) => ({
+      agentId: r.agent_id, behavior: r.behavior, heat: r.heat, total: r.total,
+      tier: r.tier, likes7d: r.likes_7d, computedAt: r.computed_at,
+    }));
+  }
+
+  // ---------- audit ----------
+
+  insertAudit(input: AuditInput): void {
+    this.db.prepare(
+      `INSERT INTO admin_audit (id, action, target_type, target_id, detail, created_at)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+    ).run(newId('au'), input.action, input.targetType, input.targetId, input.detail, input.createdAt);
+  }
+
+  listAudit(limit: number): AuditRow[] {
+    return (
+      this.db.prepare(`SELECT * FROM admin_audit ORDER BY created_at DESC LIMIT ?`).all(limit) as any[]
+    ).map((r) => ({
+      id: r.id, action: r.action, targetType: r.target_type,
+      targetId: r.target_id, detail: r.detail, createdAt: r.created_at,
+    }));
   }
 }
