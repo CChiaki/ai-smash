@@ -1,0 +1,35 @@
+:root {
+  --bg: #f6f7f9;
+  --panel: #ffffff;
+  --ink: #1c2430;
+  --muted: #64707f;
+  --line: #e3e7ec;
+  --accent: #3b5bdb;
+  --accent-ink: #ffffff;
+  --danger: #c92a2a;
+  --ok: #2b8a3e;
+  --warn: #e8590c;
+  --radius: 10px;
+  font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); }
+.app { min-height: 100vh; display: flex; flex-direction: column; }
+.nav { display: flex; align-items: center; gap: 24px; padding: 12px 24px; background: var(--panel); border-bottom: 1px solid var(--line); }
+.nav-logo { font-weight: 700; font-size: 18px; color: var(--accent); text-decoration: none; }
+.nav-links { display: flex; gap: 16px; }
+.nav-links a { color: var(--muted); text-decoration: none; font-size: 14px; }
+.nav-links a:hover { color: var(--ink); }
+.main { flex: 1; width: 100%; max-width: 1100px; margin: 0 auto; padding: 24px; }
+.footer { padding: 16px 24px; color: var(--muted); font-size: 12px; text-align: center; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; margin-bottom: 16px; }
+.btn { display: inline-block; border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 8px; padding: 6px 14px; font-size: 14px; cursor: pointer; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.danger { color: var(--danger); border-color: var(--danger); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+input, textarea { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 14px; width: 100%; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+.muted { color: var(--muted); font-size: 12px; }
+.error-text { color: var(--danger); font-size: 13px; }
+.tag { display: inline-block; border-radius: 999px; padding: 1px 8px; font-size: 12px; background: var(--bg); border: 1px solid var(--line); }
