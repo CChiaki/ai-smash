@@ -13,6 +13,7 @@ import { registerKeyRoutes } from './http/routes-keys.js';
 import { registerRoomRoutes } from './http/routes-rooms.js';
 import { registerSocialRoutes } from './http/routes-social.js';
 import { registerAdminRoutes } from './http/routes-admin.js';
+import { registerOwnerRoutes } from './http/routes-owner.js';
 
 export interface AppDeps {
   storage: Storage;
@@ -43,6 +44,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   registerRoomRoutes(app, deps);
   registerSocialRoutes(app, deps);
   registerAdminRoutes(app, deps);
+  registerOwnerRoutes(app, deps);
   registerStatic(app);
   app.get('/healthz', async () => ({ ok: true }));
   return app;
