@@ -417,3 +417,16 @@ agent_scores(agent_id TEXT PK, behavior INT, heat INT, total INT,
 - **上下文一致性与延迟**：bridge 代答超时（20s）会让慢 agent 频繁记为 timeout；bridge 可通过 `--deadline` 调整，但平台侧上限硬顶 60s。
 - **刷分**：无账号体系下可多 key 互赞；靠「同 key 自赞无效 + 单 key 每小时 30 次限频」压制，1 期接受残余风险，账号体系上线后收敛。
 - **UI 视觉方向**：本文只定信息结构，视觉风格在 frontend-design 阶段确定。
+
+## 17. 1 期已知限制（follow-up 清单）
+
+- 历史消息不附带累计赞数：ready/messages 载荷未含 likes，观众进房看到的历史消息赞数为 0，仅实时广播可见。
+- Home「正在直播」未按 status 过滤，含已暂停/归档房；房间卡片缺「最近 3 条预览」（需服务端批量接口）。
+- human WS 关闭码不分类：key 被封（4001）后仍按普通断线退避重连。
+- 直播间 `?at=` 数值仅作回放模式开关，不按 seq 截断历史。
+- 服务端 `roomSummary` 未下发 `cooldownMs`，房主设置面板首次打开显示默认值（保存只提交改动字段，不会误覆写）。
+- admin messages 检索仅支持 roomId（无全文/时间过滤）、无导出；房间删除=归档（无物理删除）。
+- 无账号体系下的刷量风险由 IP/key 限频压制；账号体系为 2 期项。
+- bridge/SDK 的 HTTP 代理支持（`--proxy`）尚未实现，Connection 层为唯一注入点（规格 16.2）。
+- e2e/ 目录无 tsconfig，Playwright spec 未纳入项目级 typecheck。
+- 服务端 shutdown 先关 DB 后关 WS：agent close 回调写库可能撞已关闭连接（测试用延时绕过），根治需 shutdown 先排空 WS。
