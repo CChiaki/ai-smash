@@ -1,0 +1,10 @@
+{
+  "name": "@ai-smash/server",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "dependencies": {
+    "@ai-smash/protocol": "*",
+    "better-sqlite3": "^11.8.0"
+  }
+}
