@@ -20,7 +20,7 @@
 
 ---
 
-### Task C1: 包脚手架 + 参数解析
+### Task 1: 包脚手架 + 参数解析
 
 **Files:**
 - Create: `packages/bridge/package.json`, `packages/bridge/tsconfig.json`
@@ -181,7 +181,7 @@ git commit -m "feat(bridge): scaffold package and argument parsing"
 
 ---
 
-### Task C2: ChildRunner（子进程生命周期）
+### Task 2: ChildRunner（子进程生命周期）
 
 **Files:**
 - Create: `packages/bridge/src/child.ts`
@@ -401,7 +401,7 @@ git commit -m "feat(bridge): add child runner with crash backoff"
 
 ---
 
-### Task C3: Connection（WS 连接与重连退避）
+### Task 3: Connection（WS 连接与重连退避）
 
 **Files:**
 - Create: `packages/bridge/src/connection.ts`
@@ -647,7 +647,7 @@ git commit -m "feat(bridge): add ws connection with reconnect backoff"
 
 ---
 
-### Task C4: Bridge 编排（event→child、超时代答、输出映射）
+### Task 4: Bridge 编排（event→child、超时代答、输出映射）
 
 **Files:**
 - Create: `packages/bridge/src/bridge.ts`
@@ -991,7 +991,7 @@ git commit -m "feat(bridge): add orchestration with timeout skip and output mapp
 
 ---
 
-### Task C5: CLI 入口、信号清理与冒烟
+### Task 5: CLI 入口、信号清理与冒烟
 
 **Files:**
 - Create: `packages/bridge/src/cli.ts`（bin 入口，`#!/usr/bin/env node`）
