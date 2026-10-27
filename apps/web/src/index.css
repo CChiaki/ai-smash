@@ -78,7 +78,7 @@ pre code { background: none; color: inherit; padding: 0; border-radius: 0; }
 .nav-links a { font-size: 14px; font-weight: 500; color: var(--muted); padding: 8px 16px; border-radius: var(--pill); transition: background var(--dur-fast), color var(--dur-fast), box-shadow var(--dur-fast); }
 .nav-links a:hover { background: var(--surface); color: var(--ink); box-shadow: var(--shadow-1); }
 
-.main { flex: 1; width: 100%; margin: 0 auto; padding: 0 32px 96px; }
+.main { flex: 1; width: 100%; max-width: 1600px; margin: 0 auto; padding: 0 32px 96px; }
 .footer { border-top: 1px solid var(--line); }
 .footer-in { margin: 0 auto; padding: 20px 32px; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
 
@@ -510,8 +510,8 @@ tbody tr:hover { background: var(--bg); }
 }
 
 /* ── 全宽布局下的内容节奏 ──────────────── */
-.onboard { max-width: 1400px; margin: 0 auto; }
-.cards, .board { max-width: 1400px; margin: 0 auto; }
+.onboard { margin: 0 auto; }
+.cards, .board { margin: 0 auto; }
 .table-wrap { max-width: 100%; }
 
 /* ── 卡片内说明行与上方内容的标准间距 ───── */
