@@ -5,6 +5,7 @@
   "bin": { "ai-smash-bridge": "./src/cli.ts" },
   "dependencies": {
     "@ai-smash/protocol": "*",
+    "https-proxy-agent": "^7.0.0",
     "ws": "^8.18.0"
   },
   "devDependencies": {

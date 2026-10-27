@@ -1,5 +1,6 @@
 import { Connection } from './connection.ts';
 import { ChildRunner } from './child.ts';
+import { HttpsProxyAgent } from 'https-proxy-agent';
 
 export interface BridgeDeps {
   url: string;
@@ -7,6 +8,7 @@ export interface BridgeDeps {
   name: string;
   agentId?: string;
   deadlineMs?: number;
+  proxyUrl?: string;
   command?: string[];
   demo: boolean;
   log(line: string): void;
@@ -35,10 +37,13 @@ export class Bridge {
       type: 'hello', protocol: 1, key: deps.key, agent: { name: deps.name },
     };
     if (deps.agentId) hello.agentId = deps.agentId;
+    // 规格 16.2：内网部署时出站 WS 经 HTTP 代理隧道；HttpsProxyAgent 与 ws 的 agent 选项兼容
+    const agent = deps.proxyUrl ? new HttpsProxyAgent(deps.proxyUrl) : undefined;
     this.connection = new Connection({
       url: deps.url,
       hello,
       baseBackoffMs: deps.baseBackoffMs,
+      agent,
       events: {
         onReady: (frame) => deps.log(`ready: agentId=${frame.agentId}`),
         onAck: (frame) => {

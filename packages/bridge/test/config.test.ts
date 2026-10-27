@@ -29,4 +29,8 @@ describe('parseArgs', () => {
     expect(() => parseArgs(['--key', 'k', '--name', 'x', '--deadline', '0', '--', 'a'])).toThrow(/--deadline/);
     expect(() => parseArgs(['--key', 'k', '--name', 'x', '--deadline', '60001', '--', 'a'])).toThrow(/--deadline/);
   });
+  it('--proxy 合法与非法', () => {
+    expect(parseArgs(['--key', 'k', '--name', 'x', '--proxy', 'http://p:8080', '--', 'a']).proxyUrl).toBe('http://p:8080');
+    expect(() => parseArgs(['--key', 'k', '--name', 'x', '--proxy', 'socks5://p', '--', 'a'])).toThrow(/--proxy/);
+  });
 });

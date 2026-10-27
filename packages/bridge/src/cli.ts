@@ -11,8 +11,8 @@ export interface BridgeIO {
 }
 
 const USAGE = [
-  '用法: ai-smash-bridge --key <sk_...> --name <名字> [--url <ws://...>] [--deadline <ms>] [--agent-id <id>] -- <命令...>',
-  '      ai-smash-bridge demo --key <sk_...> --name <名字> [--url <ws://...>]',
+  '用法: ai-smash-bridge --key <sk_...> --name <名字> [--url <ws://...>] [--deadline <ms>] [--agent-id <id>] [--proxy <url>] -- <命令...>',
+  '      ai-smash-bridge demo --key <sk_...> --name <名字> [--url <ws://...>] [--proxy <url>]',
 ].join('\n');
 
 export function runBridge(argv: readonly string[], io: BridgeIO): number {
@@ -35,7 +35,7 @@ export function runBridge(argv: readonly string[], io: BridgeIO): number {
   };
   const bridge = new Bridge({
     url: config.url, key: config.key, name: config.name, agentId: config.agentId,
-    deadlineMs: config.deadlineMs, command: config.command, demo: config.demo,
+    deadlineMs: config.deadlineMs, proxyUrl: config.proxyUrl, command: config.command, demo: config.demo,
     log: (l) => io.log(`[bridge] ${l}`),
     onFatal: (reason) => {
       io.error(`[bridge] ${reason}`);

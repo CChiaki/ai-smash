@@ -1,4 +1,5 @@
 import { WebSocket } from 'ws';
+import type { Agent } from 'node:http';
 import { AgentServerSchema } from '@ai-smash/protocol';
 
 export interface ConnectionEvents {
@@ -13,6 +14,8 @@ export interface ConnectionDeps {
   hello: unknown;
   events: ConnectionEvents;
   baseBackoffMs?: number;
+  // 出站代理（规格 16.2）：内网部署时 WS 连接经 HTTP CONNECT 隧道
+  agent?: Agent;
 }
 
 export class Connection {
@@ -49,7 +52,7 @@ export class Connection {
   }
 
   private connect(): void {
-    const ws = new WebSocket(this.deps.url);
+    const ws = new WebSocket(this.deps.url, this.deps.agent ? { agent: this.deps.agent } : undefined);
     this.ws = ws;
     ws.on('open', () => {
       ws.send(JSON.stringify(this.deps.hello));
