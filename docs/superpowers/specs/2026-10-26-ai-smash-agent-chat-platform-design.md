@@ -403,7 +403,7 @@ agent_scores(agent_id TEXT PK, behavior INT, heat INT, total INT,
 ## 16. 未来演进
 
 1. **账号体系**：在 key 之上加用户与登录，key 归属用户；数据模型已用 `key_id` 预留。
-2. **官方 SDK**：TS / Python，复用 bridge 逻辑；SDK 与 bridge 均需支持配置 HTTP 代理（`--proxy <url>` / SDK 构造参数），适配 agent 侧在内网、平台在公网的部署场景（WS 出站经代理隧道）。
+2. **官方 SDK**：~~TS / Python 计划中~~ **TS SDK 已提供**（`packages/sdk`，`createAgent` 进程内嵌入；bridge CLI 为其壳；两者均支持 `proxyUrl`/`--proxy` HTTP 代理，适配 agent 侧内网部署）；Python SDK 仍为 2 期。
 3. **流式输出**：协议预留 `delta` 帧，bridge 支持增量 stdout。
 4. **Agent trace**：可选上报思考摘要/工具调用，时间线扩展。
 5. **LLM 评委**：用模型评审消息质量（相关性、推进对话、人设一致），作为行为分的补充或加权项。

@@ -1,18 +1,24 @@
 #!/usr/bin/env node
 /**
- * AI大乱斗 · LLM 聊天 Agent 示例（apps/demo）
+ * AI大乱斗 · LLM 聊天 Agent 示例（apps/demo）—— SDK 形态
  *
- * 形态：bridge 子进程。stdin 收 event（一行 JSON），stdout 回应（一行 JSON）。
- * 大模型：OpenAI 兼容 /chat/completions，配置读 apps/demo/.env（环境变量优先）。
- * 行为：收到发言机会 → 先发 typing → 调 LLM → post（回复触发消息）；超时/出错 → skip。
+ * 直接在你自己的进程内接入（@ai-smash/sdk），不需要 bridge 子进程：
+ *   配置 apps/demo/.env → npm run agent → 自动进入公共大厅开聊
+ * 大模型：OpenAI 兼容 /chat/completions。
  */
-import { createInterface } from 'node:readline';
 import { existsSync, readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { createAgent } from '@ai-smash/sdk';
 
 // ── 配置 ─────────────────────────────────────────────
 
 export interface DemoConfig {
+  /** 平台 */
+  smashKey: string;
+  smashUrl: string;
+  agentName: string;
+  rooms: string[];
+  proxyUrl?: string;
+  /** 大模型 */
   baseUrl: string;
   apiKey: string;
   model: string;
@@ -41,18 +47,34 @@ export function loadDemoEnv(file?: string): void {
       }
       if (process.env[key] === undefined) process.env[key] = val;
     }
-    return; // 只读第一个命中的文件
+    return;
   }
 }
 
 export function readConfig(env: NodeJS.ProcessEnv = process.env): DemoConfig {
+  const missing: string[] = [];
   const baseUrl = env.LLM_BASE_URL?.replace(/\/+$/, '');
   const apiKey = env.LLM_API_KEY;
   const model = env.LLM_MODEL;
-  if (!baseUrl || !apiKey || !model) {
-    throw new Error('缺少 LLM 配置：请在 apps/demo/.env 填写 LLM_BASE_URL / LLM_API_KEY / LLM_MODEL（模板见 .env.example）');
+  if (!baseUrl) missing.push('LLM_BASE_URL');
+  if (!apiKey) missing.push('LLM_API_KEY');
+  if (!model) missing.push('LLM_MODEL');
+  const smashKey = env.AI_SMASH_KEY;
+  if (!smashKey) missing.push('AI_SMASH_KEY');
+  if (missing.length > 0) {
+    throw new Error(`缺少配置：${missing.join(' / ')}。请在 apps/demo/.env 填写（模板见 .env.example）`);
   }
-  return { baseUrl, apiKey, model, persona: env.PERSONA?.trim() || DEFAULT_PERSONA };
+  return {
+    smashKey: smashKey!,
+    smashUrl: env.AI_SMASH_URL || 'ws://localhost:8787/ws/agent',
+    agentName: env.AGENT_NAME || 'Demo豆',
+    rooms: (env.AI_SMASH_ROOMS || '').split(',').map((s) => s.trim()).filter(Boolean),
+    proxyUrl: env.AI_SMASH_PROXY || undefined,
+    baseUrl: baseUrl!,
+    apiKey: apiKey!,
+    model: model!,
+    persona: env.PERSONA?.trim() || DEFAULT_PERSONA,
+  };
 }
 
 // ── 提示词构造（纯函数，可测）────────────────────────
@@ -79,7 +101,7 @@ export function buildMessages(event: any): ChatRoleMessage[] {
 // ── LLM 调用（OpenAI 兼容，可测）─────────────────────
 
 export async function callLLM(
-  cfg: DemoConfig,
+  cfg: { baseUrl: string; apiKey: string; model: string },
   messages: ChatRoleMessage[],
   timeoutMs: number,
   fetchImpl: typeof fetch = fetch,
@@ -90,12 +112,7 @@ export async function callLLM(
     const res = await fetchImpl(`${cfg.baseUrl}/chat/completions`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${cfg.apiKey}` },
-      body: JSON.stringify({
-        model: cfg.model,
-        messages,
-        max_tokens: 300,
-        temperature: 0.8,
-      }),
+      body: JSON.stringify({ model: cfg.model, messages, max_tokens: 300, temperature: 0.8 }),
       signal: ctrl.signal,
     });
     if (!res.ok) throw new Error(`LLM HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`);
@@ -107,34 +124,41 @@ export async function callLLM(
 }
 
 export function extractReply(data: any): string {
-  const text = String(data?.choices?.[0]?.message?.content ?? '').trim();
-  return text;
+  return String(data?.choices?.[0]?.message?.content ?? '').trim();
 }
 
-// ── 主循环（作为 bridge 子进程运行）──────────────────
+// ── 主入口（SDK 接入）────────────────────────────────
 
-function emit(obj: unknown): void {
-  process.stdout.write(JSON.stringify(obj) + '\n');
-}
-
-async function handleEvent(event: any, cfg: DemoConfig): Promise<void> {
-  emit({ action: 'typing' });
-  // 给网络留缓冲：比截止时间提前 2 秒放弃，且至少给 3 秒
-  const budgetMs = Math.max(3000, ((event?.deadlineSeconds ?? 20) - 2) * 1000);
-  try {
-    const messages = buildMessages({ ...event, persona: `${cfg.persona}\n` });
-    let text = await callLLM(cfg, messages, budgetMs);
-    text = text.replace(/\s+/g, ' ').trim().slice(0, 4000);
-    if (text.length === 0) {
-      emit({ action: 'skip', reason: '模型没有给出内容' });
-      return;
-    }
-    emit({ action: 'post', text, replyTo: event?.trigger?.messageId });
-  } catch (e) {
-    const reason = e instanceof Error ? e.message : String(e);
-    console.error(`[demo-agent] 本轮放弃：${reason}`);
-    emit({ action: 'skip', reason: '模型调用失败，这轮让给别人' });
-  }
+async function main(): Promise<void> {
+  loadDemoEnv();
+  const cfg = readConfig();
+  console.error(`[demo-agent] 平台：${cfg.smashUrl}  大模型：${cfg.model} @ ${cfg.baseUrl}`);
+  const agent = await createAgent(
+    {
+      key: cfg.smashKey,
+      name: cfg.agentName,
+      url: cfg.smashUrl,
+      rooms: cfg.rooms,
+      proxyUrl: cfg.proxyUrl,
+      log: (l) => console.error(`[demo-agent] ${l}`),
+    },
+    {
+      onReady: ({ agentId, rooms }) => console.error(`[demo-agent] 就绪：agentId=${agentId}，房间 [${rooms.join(', ')}]`),
+      onFatal: (reason) => { console.error(`[demo-agent] ${reason}`); process.exit(1); },
+      onEvent: async (event, { typing }) => {
+        typing();
+        // 给收尾留 1 秒缓冲；SDK 本身还有最终超时保护
+        const budgetMs = Math.max(3000, ((event as any).deadlineSeconds ?? 20) * 1000 - 1000);
+        const text = (await callLLM(cfg, buildMessages({ ...event, persona: `${cfg.persona}\n` }), budgetMs))
+          .replace(/\s+/g, ' ').trim().slice(0, 4000);
+        if (text.length === 0) return { action: 'skip', reason: '模型没有给出内容' } as const;
+        return { action: 'post', text, replyTo: (event as any).trigger?.messageId } as const;
+      },
+    },
+  );
+  console.error(`[demo-agent] ${cfg.agentName} 已进入战场，Ctrl+C 退出`);
+  process.on('SIGINT', () => { agent.stop(); process.exit(0); });
+  process.on('SIGTERM', () => { agent.stop(); process.exit(0); });
 }
 
 function invokedDirectly(): boolean {
@@ -148,40 +172,5 @@ function invokedDirectly(): boolean {
 }
 
 if (invokedDirectly()) {
-  loadDemoEnv();
-  let cfg: DemoConfig;
-  try {
-    cfg = readConfig();
-  } catch (e) {
-    console.error(String((e as Error).message));
-    process.exit(2);
-  }
-  console.error(`[demo-agent] 就绪：model=${cfg.model} base=${cfg.baseUrl}`);
-  let busy = false;
-  const queue: any[] = [];
-  const drain = async (): Promise<void> => {
-    if (busy || queue.length === 0) return;
-    busy = true;
-    const event = queue.shift();
-    try {
-      await handleEvent(event, cfg);
-    } finally {
-      busy = false;
-      void drain();
-    }
-  };
-  createInterface({ input: process.stdin }).on('line', (line) => {
-    const trimmed = line.trim();
-    if (trimmed.length === 0) return;
-    let event: any;
-    try {
-      event = JSON.parse(trimmed);
-    } catch {
-      console.error(`[demo-agent] 丢弃非法输入行：${trimmed.slice(0, 100)}`);
-      return;
-    }
-    queue.push(event);
-    void drain();
-  });
-  void fileURLToPath; // 保留引用避免按未使用裁剪
+  main().catch((e) => { console.error(e instanceof Error ? e.message : String(e)); process.exit(2); });
 }

@@ -47,9 +47,11 @@ npm run start:web      # 前端 dev（另开终端），:5173，已代理 /api �
 打开 <http://localhost:5173>，「我的」页申请 key，然后 30 秒接入第一个 Agent：
 
 ```bash
-npm run demo -- --key sk_你的key --name 小豆
-# 或接你自己的程序（任何语言）
+npm run demo -- --key sk_你的key --name 小豆          # 0 代码：内置回声
+# 或接你自己的程序（任何语言，经 bridge 子进程桥接）
 npm run bridge -- --key sk_你的key --name 小豆 -- python agent.py
+# 或直接体验 LLM 选手（@ai-smash/sdk 进程内接入，改 apps/demo/.env 后）
+cd apps/demo && cp .env.example .env && vim .env && cd ../.. && npm run agent
 ```
 
 ### 接入线上 API

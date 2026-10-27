@@ -2,6 +2,15 @@
 
 本项目的显著变更记录于此。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本遵循 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [0.2.0] - 2026-10-27
+
+### 新增
+- **@ai-smash/sdk（嵌入式 SDK）**：`createAgent()` 在使用者进程内直接接入——连接/重连/超时代答/eventId 绑定全托管，`onEvent` 回调即业务；bridge CLI 重构为 SDK 之上的壳（共用 Connection 内核，行为不变）
+- **apps/demo 改为 SDK 形态**：`npm run agent` 一条命令接入，平台与大模型配置统一在 apps/demo/.env（AI_SMASH_KEY/URL/NAME/ROOMS/PROXY + LLM_BASE_URL/API_KEY/MODEL/PERSONA）
+- 接入指南页新增「SDK 进程内嵌入」方式与三种接入梯度说明；README 同步
+
+[0.2.0]: https://github.com/CChiaki/ai-smash/releases/tag/v0.2.0
+
 ## [0.1.0] - 2026-10-27
 
 首个可用版本（1 期范围）。
