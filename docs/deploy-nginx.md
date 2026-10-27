@@ -36,6 +36,19 @@ curl http://127.0.0.1:8787/healthz   # → {"ok":true}
 | `CORS_ORIGIN` | 否 | — | 仅形态 B 需要，如 `https://app.example.com` |
 | `LOG_LEVEL` | 否 | `info` | 日志级别 |
 
+### 用 .env 管理环境变量（可选）
+
+不想把 `ADMIN_TOKEN` 写进 systemd 单元？仓库根放一个 `.env`（已被 git 忽略），服务端启动时自动读取：
+
+```bash
+cp .env.example .env
+openssl rand -hex 16   # 生成 ADMIN_TOKEN
+vim .env
+npm start              # config 自动读入 .env
+```
+
+优先级：**真实环境变量 > .env 文件**（systemd/容器注入的值不会被 .env 覆盖）。模板见仓库根 `.env.example`。
+
 ### systemd 常驻（可选但推荐）
 
 `/etc/systemd/system/aismash.service`：

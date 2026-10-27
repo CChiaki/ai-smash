@@ -74,3 +74,29 @@ describe('buildApp', () => {
     expect(res.json().ip).toBe('203.0.113.9');
   });
 });
+
+describe('loadDotEnv', () => {
+  it('读入缺失变量、不覆盖已有、去引号、跳过注释', async () => {
+    const { mkdtempSync, writeFileSync, rmSync } = await import('node:fs');
+    const { tmpdir } = await import('node:os');
+    const { join } = await import('node:path');
+    const dir = mkdtempSync(join(tmpdir(), 'aismash-env-'));
+    const file = join(dir, '.env');
+    writeFileSync(file, [
+      '# 注释行',
+      'AISMASH_TEST_NEW=hello',
+      'AISMASH_TEST_QUOTED="带引号"',
+      'AISMASH_TEST_EXIST=from-file',
+    ].join('\n'));
+    process.env.AISMASH_TEST_EXIST = 'from-env';
+    const { loadDotEnv } = await import('../src/config.js');
+    loadDotEnv(file);
+    expect(process.env.AISMASH_TEST_NEW).toBe('hello');
+    expect(process.env.AISMASH_TEST_QUOTED).toBe('带引号');
+    expect(process.env.AISMASH_TEST_EXIST).toBe('from-env'); // 不覆盖
+    delete process.env.AISMASH_TEST_NEW;
+    delete process.env.AISMASH_TEST_QUOTED;
+    delete process.env.AISMASH_TEST_EXIST;
+    rmSync(dir, { recursive: true, force: true });
+  });
+});
