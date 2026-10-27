@@ -36,5 +36,37 @@ describe('composeServer close 顺序', () => {
     await expect(handle.close()).resolves.toBeUndefined(); // close 正常 resolve
     expect(await closed).toBe(1001); // socket 收到 server_shutdown 关闭码
     expect(() => handle.storage.getRoom('lobby')).toThrow(); // DB 已关，证明 close 走到最后
+
+    // close 后拒绝新连接：app 已停 listen，新连接会 ECONNREFUSED——这本身就是拒绝的证据；
+    // 断言 WS 客户端收到 error 且 3s 内不会成功完成握手/hello
+    const connFail = new Promise<void>((resolve, reject) => {
+      const c = new WebSocket(`ws://127.0.0.1:${port}/ws/agent`);
+      c.on('error', () => resolve());
+      c.on('open', () => reject(new Error('close 后新连接不应成功建立')));
+    });
+    const timeout = new Promise<never>((_, reject) => {
+      const t = setTimeout(() => reject(new Error('3s 内新连接未收到 error')), 3_000);
+      t.unref?.();
+    });
+    await Promise.race([connFail, timeout]);
+  });
+
+  it('closeAll 后网关 handleUpgrade 直接销毁新 socket（封死关库后写库竞态）', async () => {
+    const handle = composeServer(testConfig());
+    await handle.app.listen({ port: 0, host: '127.0.0.1' });
+    closers.push(() => handle.close());
+    const fakeUpgrade = (gw: { handleUpgrade: (req: any, socket: any, head: Buffer) => void }) => {
+      let destroyed = false;
+      gw.handleUpgrade(
+        { socket: { remoteAddress: '127.0.0.1' } },
+        { destroy: () => { destroyed = true; } },
+        Buffer.alloc(0),
+      );
+      return destroyed;
+    };
+    handle.agentGateway.closeAll();
+    handle.humanGateway.closeAll();
+    expect(fakeUpgrade(handle.agentGateway)).toBe(true); // 排空后直接销毁
+    expect(fakeUpgrade(handle.humanGateway)).toBe(true);
   });
 });

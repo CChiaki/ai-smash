@@ -32,5 +32,9 @@ describe('parseArgs', () => {
   it('--proxy 合法与非法', () => {
     expect(parseArgs(['--key', 'k', '--name', 'x', '--proxy', 'http://p:8080', '--', 'a']).proxyUrl).toBe('http://p:8080');
     expect(() => parseArgs(['--key', 'k', '--name', 'x', '--proxy', 'socks5://p', '--', 'a'])).toThrow(/--proxy/);
+    // 仅前缀但不可解析（如 http://）同样拒绝
+    expect(() => parseArgs(['--key', 'k', '--name', 'x', '--proxy', 'http://', '--', 'a'])).toThrow(/--proxy/);
+    // 缺取值不静默吞掉（若静默会落到「需要 --command」错误而非 --proxy）
+    expect(() => parseArgs(['--key', 'k', '--name', 'x', '--proxy'])).toThrow(/--proxy/);
   });
 });

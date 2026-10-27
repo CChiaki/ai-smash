@@ -14,6 +14,8 @@ export class HumanGateway {
   // 安全：每 IP 连接上限
   private ipCounts = new Map<string, number>();
   private static readonly MAX_PER_IP = 50;
+  // 排空后拒绝新连接，与 agent 网关保持一致
+  private closed = false;
 
   constructor(private deps: AppDeps) {
     deps.bus.on(Topics.messageNew, (p: any) => {
@@ -35,6 +37,10 @@ export class HumanGateway {
   }
 
   handleUpgrade(req: any, socket: Duplex, head: Buffer): void {
+    if (this.closed) {
+      socket.destroy();
+      return;
+    }
     const ip = req.socket.remoteAddress ?? 'unknown';
     const n = this.ipCounts.get(ip) ?? 0;
     if (n >= HumanGateway.MAX_PER_IP) {
@@ -60,6 +66,7 @@ export class HumanGateway {
 
   // 规格 18 shutdown 顺序：先对所有观测 WS 发 1001，清空注册表后再关 DB
   closeAll(): void {
+    this.closed = true;
     for (const set of this.rooms.values()) {
       for (const ws of set) { try { ws.close(1001, 'server_shutdown'); } catch { /* 忽略 */ } }
     }

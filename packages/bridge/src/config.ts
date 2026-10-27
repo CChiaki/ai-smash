@@ -39,6 +39,7 @@ export function parseArgs(argv: readonly string[]): BridgeConfig {
       deadlineMs = Number(argv[++i]);
     } else if (a === '--proxy') {
       proxyUrl = argv[++i];
+      if (!proxyUrl) throw new Error('--proxy 缺少取值');
     } else if (a === '--command') {
       command = (argv[++i] ?? '').split(/\s+/).filter((s) => s.length > 0);
     } else {
@@ -52,8 +53,10 @@ export function parseArgs(argv: readonly string[]): BridgeConfig {
   if (deadlineMs !== undefined && (!Number.isInteger(deadlineMs) || deadlineMs <= 0 || deadlineMs > 60_000)) {
     throw new Error('--deadline 需为 1-60000 的整数毫秒');
   }
-  if (proxyUrl !== undefined && !/^https?:\/\//.test(proxyUrl)) {
-    throw new Error('--proxy 需为 http(s):// 开头的代理地址');
+  if (proxyUrl !== undefined) {
+    let ok = proxyUrl.startsWith('http://') || proxyUrl.startsWith('https://');
+    if (ok) { try { new URL(proxyUrl); } catch { ok = false; } }
+    if (!ok) throw new Error('--proxy 需为合法的 http(s):// 代理地址');
   }
   return { url, key, name, agentId, deadlineMs, proxyUrl, command, demo };
 }

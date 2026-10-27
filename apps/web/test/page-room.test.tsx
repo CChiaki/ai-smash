@@ -163,7 +163,7 @@ describe('RoomPage', () => {
     // 邀请码来自 fetchRoom（REST 房主视角）
     await waitFor(() => expect(screen.getByText(/邀请码：INV-9/)).toBeTruthy());
     expect(screen.getByText('保存')).toBeTruthy();
-    // 默认值取当前 room 值（cooldownMs 未随 room 下发时取协议默认 10000）
+    // cooldownMs 随 RoomSummary 下发，此用例验证缺省回退
     expect((screen.getByLabelText('冷却 ms') as HTMLInputElement).value).toBe('10000');
     expect((screen.getByLabelText('人数上限') as HTMLInputElement).value).toBe('20');
     fireEvent.change(screen.getByLabelText('冷却 ms'), { target: { value: '1500' } });

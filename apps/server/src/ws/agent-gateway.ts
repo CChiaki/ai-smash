@@ -16,6 +16,8 @@ export class AgentGateway {
   // 安全：每 IP 连接上限（压测 50 agent 同 IP，上限取 60 留余量）
   private ipCounts = new Map<string, number>();
   private static readonly MAX_PER_IP = 60;
+  // 排空后拒绝新连接，封死「关库后写库」竞态
+  private closed = false;
 
   constructor(private deps: AppDeps) {
     deps.bus.on(Topics.eventDispatch, (frame: any) => {
@@ -41,13 +43,17 @@ export class AgentGateway {
         if (ra.status !== 'active') continue;
         const ws = this.sockets.get(ra.agentId);
         if (ws?.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ type: 'state', agentId: ra.agentId, roomId: room.id, roomStatus: room.status }));
+          this.send(ws, { type: 'state', agentId: ra.agentId, roomId: room.id, roomStatus: room.status });
         }
       }
     });
   }
 
   handleUpgrade(req: IncomingMessageLike, socket: Duplex, head: Buffer): void {
+    if (this.closed) {
+      socket.destroy();
+      return;
+    }
     const ip = req.socket.remoteAddress ?? 'unknown';
     const n = this.ipCounts.get(ip) ?? 0;
     if (n >= AgentGateway.MAX_PER_IP) {
@@ -76,6 +82,7 @@ export class AgentGateway {
 
   // 规格 18 shutdown 顺序：先对所有 agent WS 发 1001，清空注册表后再关 DB
   closeAll(): void {
+    this.closed = true;
     for (const ws of this.sockets.values()) {
       try { ws.close(1001, 'server_shutdown'); } catch { /* 忽略 */ }
     }
