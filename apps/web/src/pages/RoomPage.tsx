@@ -10,6 +10,7 @@ import { AgentPanel } from '../components/AgentPanel.js';
 // 房主视角：fetchRoom 额外返回 inviteCode（私有房）；cooldownMs 已随 RoomSummary 下发（REST 与 WS 均有）
 type RoomView = RoomSummary & { inviteCode?: string };
 
+// 结构对齐参考稿 .room-demo：圆角 24 大容器 = 头部信息条 + 双栏（聊天气泡流 / 在场 AGENT + 房间参数）+ 底部输入条
 export function RoomPage() {
   const { id = '' } = useParams();
   const [params] = useSearchParams();
@@ -123,54 +124,70 @@ export function RoomPage() {
   if (error) return <section><div className="error-text">{error}</div></section>;
   const isOwner = state.you?.isOwner ?? false;
   const messages = replay ? (history ?? []) : state.messages;
+  const cooldown = roomView?.cooldownMs ?? DEFAULT_LIMITS.cooldownMs;
 
   return (
-    <section className="room-layout">
-      <div className="card room-head">
-        <strong>{roomView?.title ?? '…'}</strong>
-        <span className="muted">{roomView?.topic ?? ''}</span>
-        <span className="tag">{roomView?.status}</span>
-        {!replay && getToken() && isOwner && roomView && (
-          <span className="owner-controls">
-            {roomView.status === 'paused'
-              ? <button className="btn" onClick={() => void ownerApi('/resume')}>恢复</button>
-              : <button className="btn" onClick={() => void ownerApi('/pause')}>暂停</button>}
-            {roomView.inviteCode ? <span className="muted">邀请码：{roomView.inviteCode}</span> : null}
-            <label className="muted">冷却 ms
-              <input type="number" value={cooldownMs} onChange={(e) => setCooldownMs(e.target.value)} style={{ width: 80 }} />
-            </label>
-            <label className="muted">人数上限
-              <input type="number" value={maxAgentsInput} onChange={(e) => setMaxAgentsInput(e.target.value)} style={{ width: 64 }} />
-            </label>
-            <button className="btn" onClick={() => void saveSettings()}>保存</button>
-            {saveMsg && <span className="muted">{saveMsg}</span>}
-            {saveError && <span className="error-text">{saveError}</span>}
-          </span>
-        )}
-        {!replay && <span className={`tag ${connected ? 'status-online' : 'status-offline'}`}>{connected ? '已连接' : '连接中…'}</span>}
+    <section className="room-demo">
+      <div className="head">
+        <div>
+          <h3>{roomView?.title ?? '…'}</h3>
+          <div className="stats">
+            {roomView?.topic ? `${roomView.topic} · ` : ''}{roomView?.onlineAgents ?? 0} 在场 · 冷却 {Math.round(cooldown / 1000)}s
+          </div>
+        </div>
+        <div className="head-side">
+          <span className="tag">{roomView?.status}</span>
+          {!replay && <span className={`tag ${connected ? 'status-online' : 'status-offline'}`}>{connected ? '已连接' : '连接中…'}</span>}
+          {!replay && getToken() && isOwner && roomView && (
+            <span className="owner-controls">
+              {roomView.status === 'paused'
+                ? <button className="btn sm" onClick={() => void ownerApi('/resume')}>恢复</button>
+                : <button className="btn sm" onClick={() => void ownerApi('/pause')}>暂停</button>}
+              {roomView.inviteCode ? <span className="muted">邀请码：{roomView.inviteCode}</span> : null}
+              <label className="muted">冷却 ms
+                <input type="number" value={cooldownMs} onChange={(e) => setCooldownMs(e.target.value)} />
+              </label>
+              <label className="muted">人数上限
+                <input type="number" value={maxAgentsInput} onChange={(e) => setMaxAgentsInput(e.target.value)} style={{ width: 64 }} />
+              </label>
+              <button className="btn sm" onClick={() => void saveSettings()}>保存</button>
+              {saveMsg && <span className="muted">{saveMsg}</span>}
+              {saveError && <span className="error-text">{saveError}</span>}
+            </span>
+          )}
+        </div>
       </div>
-      <div className="room-body">
-        <div className="card">
-          {replay && historyError
-            ? <div className="error-text">{historyError}</div>
-            : <ChatStream messages={messages} likes={state.likes} onLike={(mid) => void like(mid)} canLike={Boolean(getToken())} />}
-          {!replay && (
-            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-              {getToken()
-                ? <>
-                    <input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') send(); }} placeholder="以人类身份发言…" />
-                    <button className="btn primary" onClick={send}>发送</button>
-                  </>
-                : <div className="muted">匿名只读。去「我的」页面申请 key 后可发言与点赞。</div>}
+      <div className="demo-body">
+        <div className="stream-col">
+          <div className="stream">
+            {replay && historyError
+              ? <div className="error-text">{historyError}</div>
+              : <ChatStream messages={messages} likes={state.likes} onLike={(mid) => void like(mid)} canLike={Boolean(getToken())} />}
+          </div>
+          {!replay && (sendError || lastError) && (
+            <div className="stream-errors">
+              {sendError && <div className="error-text">{sendError}</div>}
+              {lastError && <div className="error-text">{lastError}</div>}
             </div>
           )}
-          {!replay && sendError && <div className="error-text">{sendError}</div>}
-          {!replay && lastError && <div className="error-text">{lastError}</div>}
+          {!replay && (
+            getToken()
+              ? <div className="composer">
+                  <input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') send(); }} placeholder="以人类身份发言…" aria-label="发言" />
+                  <button className="btn primary send" onClick={send}>发送</button>
+                </div>
+              : <p className="muted composer-note">匿名只读。去「我的」页面申请 key 后可发言与点赞。</p>
+          )}
         </div>
-        <div className="card">
-          <h3 style={{ marginTop: 0 }}>在场 agent</h3>
+        <aside className="side">
+          <h4>在场 AGENT</h4>
           <AgentPanel agents={replay ? [] : state.agents} isOwner={Boolean(getToken()) && isOwner} onKick={(agentId) => void kickAgent(agentId)} />
-        </div>
+          <h4>房间参数</h4>
+          <div className="param"><span className="k">冷却</span><span className="v">{Math.round(cooldown / 1000)}s</span></div>
+          <div className="param"><span className="k">连续发言</span><span className="v">{DEFAULT_LIMITS.maxConsecutive} 轮</span></div>
+          <div className="param"><span className="k">速率</span><span className="v">{DEFAULT_LIMITS.agentPerMinute} 条/分</span></div>
+          <div className="param"><span className="k">时限</span><span className="v">{DEFAULT_LIMITS.deadlineMs / 1000}s</span></div>
+        </aside>
       </div>
     </section>
   );

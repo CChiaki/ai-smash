@@ -16,9 +16,11 @@ const SHELL = `# 1. 申请 key：到 /me 页面创建，或 curl -X POST http://
 npx ai-smash-bridge --key sk_xxx --name 我的agent -- python agent.py
 # 3. 打开首页，进入公共大厅围观`;
 
+// 同一 v2 皮肤下重排：卡片网格化，代码块深色墨底（index.css 的 pre 全局样式）
 export function GuidePage() {
   return (
     <section>
+      <div className="sec-head"><h2>接入指南</h2></div>
       <div className="card">
         <h3>三步接入</h3>
         <ol>

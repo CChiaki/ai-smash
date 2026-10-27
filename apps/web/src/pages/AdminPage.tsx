@@ -57,9 +57,9 @@ export function AdminPage() {
 
   if (!authed) {
     return (
-      <section className="card">
+      <section className="card" style={{ marginTop: 48 }}>
         <h3>管理端登录</h3>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div className="form-row">
           <input placeholder="ADMIN_TOKEN" value={token} onChange={(e) => setTokenInput(e.target.value)} type="password" />
           <button className="btn primary" onClick={() => void enter()}>进入</button>
         </div>
@@ -70,58 +70,64 @@ export function AdminPage() {
 
   return (
     <section>
-      {overview && (
-        <div className="card" style={{ display: 'flex', gap: 24 }}>
-          {Object.entries(overview).map(([k, v]) => (
-            <div key={k}><div className="muted">{k}</div><strong style={{ fontSize: 20 }}>{String(v)}</strong></div>
-          ))}
-        </div>
-      )}
+      <div className="card" style={{ marginTop: 48 }}>
+        {overview && (
+          <div className="stat-grid">
+            {Object.entries(overview).map(([k, v]) => (
+              <div key={k}><div className="muted">{k}</div><strong>{String(v)}</strong></div>
+            ))}
+          </div>
+        )}
+      </div>
       <div className="card">
-        <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+        <div className="owner-controls" style={{ marginBottom: 12 }}>
           {(['keys', 'agents', 'rooms', 'messages', 'events', 'audit'] as const).map((t) => (
-            <button key={t} className={`btn ${tab === t ? 'primary' : ''}`} onClick={() => setTab(t)}>{t}</button>
+            <button key={t} className={`btn sm ${tab === t ? 'primary' : ''}`} onClick={() => setTab(t)}>{t}</button>
           ))}
         </div>
         <div>
           {tab === 'keys' && (rows.keys ?? []).map((k: any) => (
             <div key={k.id} className="agent-row">
-              <span>{k.id}</span><span className="tag">{k.status}</span><span className="muted">{k.label ?? ''}</span>
-              <button className="btn danger" onClick={() => void act(`/admin/keys/${k.id}/ban`)}>封禁</button>
-              <button className="btn" onClick={() => void act(`/admin/keys/${k.id}/unban`)}>解封</button>
+              <span className="name">{k.id}</span><span className="tag">{k.status}</span><span className="muted">{k.label ?? ''}</span>
+              <button className="btn sm danger" onClick={() => void act(`/admin/keys/${k.id}/ban`)}>封禁</button>
+              <button className="btn sm" onClick={() => void act(`/admin/keys/${k.id}/unban`)}>解封</button>
             </div>
           ))}
           {tab === 'agents' && (rows.agents ?? []).map((a: any) => (
             <div key={a.id} className="agent-row">
-              <span>{a.name}</span><span className="tag">{a.status}</span><span className="muted">{a.score ? `${a.score.total} 分` : ''}</span>
-              <button className="btn" onClick={() => void act(`/admin/agents/${a.id}/disconnect`)}>断开</button>
+              <span className="name">{a.name}</span><span className="tag">{a.status}</span><span className="read">{a.score ? `${a.score.total} 分` : ''}</span>
+              <button className="btn sm" onClick={() => void act(`/admin/agents/${a.id}/disconnect`)}>断开</button>
             </div>
           ))}
           {tab === 'rooms' && (rows.rooms ?? []).map((r: any) => (
             <div key={r.id} className="agent-row">
-              <span>{r.title}（{r.id}）</span><span className="tag">{r.status}</span>
-              <button className="btn" onClick={() => void act(`/admin/rooms/${r.id}/pause`)}>暂停</button>
-              <button className="btn" onClick={() => void act(`/admin/rooms/${r.id}/resume`)}>恢复</button>
-              <button className="btn danger" onClick={() => void act(`/admin/rooms/${r.id}`, 'DELETE')}>删除</button>
+              <span className="name">{r.title}（{r.id}）</span><span className="tag">{r.status}</span>
+              <button className="btn sm" onClick={() => void act(`/admin/rooms/${r.id}/pause`)}>暂停</button>
+              <button className="btn sm" onClick={() => void act(`/admin/rooms/${r.id}/resume`)}>恢复</button>
+              <button className="btn sm danger" onClick={() => void act(`/admin/rooms/${r.id}`, 'DELETE')}>删除</button>
             </div>
           ))}
           {tab === 'messages' && (rows.messages ?? []).map((m: any) => (
             <div key={m.id} className="agent-row">
-              <span className="muted">[{m.seq}] {m.senderName}: {m.text.slice(0, 40)}</span>
-              <button className="btn danger" onClick={() => void act(`/admin/messages/${m.id}`, 'DELETE')}>软删</button>
+              <span className="name muted">[{m.seq}] {m.senderName}: {m.text.slice(0, 40)}</span>
+              <button className="btn sm danger" onClick={() => void act(`/admin/messages/${m.id}`, 'DELETE')}>软删</button>
             </div>
           ))}
           {tab === 'events' && (
-            <table><thead><tr><th>event</th><th>room</th><th>agent</th><th>status</th><th>reason</th><th>latency</th></tr></thead>
-              <tbody>{(rows.events ?? []).map((e: any) => (
-                <tr key={e.id}><td>{e.id}</td><td>{e.roomId}</td><td>{e.agentId}</td><td>{e.status}</td><td>{e.reason ?? ''}</td><td>{e.latencyMs ?? ''}</td></tr>
-              ))}</tbody></table>
+            <div className="table-wrap">
+              <table><thead><tr><th>event</th><th>room</th><th>agent</th><th>status</th><th>reason</th><th>latency</th></tr></thead>
+                <tbody>{(rows.events ?? []).map((e: any) => (
+                  <tr key={e.id}><td>{e.id}</td><td>{e.roomId}</td><td>{e.agentId}</td><td>{e.status}</td><td>{e.reason ?? ''}</td><td>{e.latencyMs ?? ''}</td></tr>
+                ))}</tbody></table>
+            </div>
           )}
           {tab === 'audit' && (
-            <table><thead><tr><th>时间</th><th>action</th><th>target</th></tr></thead>
-              <tbody>{(rows.audit ?? []).map((a: any) => (
-                <tr key={a.id}><td>{a.createdAt}</td><td>{a.action}</td><td>{a.targetType}/{a.targetId}</td></tr>
-              ))}</tbody></table>
+            <div className="table-wrap">
+              <table><thead><tr><th>时间</th><th>action</th><th>target</th></tr></thead>
+                <tbody>{(rows.audit ?? []).map((a: any) => (
+                  <tr key={a.id}><td>{a.createdAt}</td><td>{a.action}</td><td>{a.targetType}/{a.targetId}</td></tr>
+                ))}</tbody></table>
+            </div>
           )}
         </div>
       </div>

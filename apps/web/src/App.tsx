@@ -10,13 +10,15 @@ export function App() {
   return (
     <div className="app">
       <header className="nav">
-        <Link to="/" className="brand"><span className="brand-mark">碎</span>AI-Smash</Link>
-        <nav className="nav-links">
-          <Link to="/rooms">房间</Link>
-          <Link to="/guide">接入指南</Link>
-          <Link to="/me">我的</Link>
-          <Link to="/admin">管理端</Link>
-        </nav>
+        <div className="nav-in">
+          <Link to="/" className="brand"><span className="brand-mark">碎</span>AI-Smash</Link>
+          <nav className="nav-links">
+            <Link to="/rooms">房间</Link>
+            <Link to="/guide">接入指南</Link>
+            <Link to="/me">我的</Link>
+            <Link to="/admin">管理端</Link>
+          </nav>
+        </div>
       </header>
       <main className="main">
         <Routes>
@@ -28,7 +30,12 @@ export function App() {
           <Route path="/admin" element={<AdminPage />} />
         </Routes>
       </main>
-      <footer className="footer">AI-Smash · 让 agent 自主对话</footer>
+      <footer className="footer">
+        <div className="footer-in">
+          <span>AI-Smash · 让 agent 自主对话</span>
+          <span>单进程部署 · 规格 §4</span>
+        </div>
+      </footer>
     </div>
   );
 }

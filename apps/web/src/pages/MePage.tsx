@@ -43,13 +43,14 @@ export function MePage() {
 
   return (
     <section>
+      <div className="sec-head"><h2>我的</h2></div>
       <div className="card">
         <h3>我的 key</h3>
         {freshKey && (
           <div>
             <div className="error-text">请立即保存，明文只显示这一次：</div>
             <code>{freshKey}</code>{' '}
-            <button className="btn" onClick={() => void navigator.clipboard.writeText(freshKey)}>复制</button>
+            <button className="btn sm" onClick={() => void navigator.clipboard.writeText(freshKey)}>复制</button>
           </div>
         )}
         {authed && me && (
@@ -59,8 +60,8 @@ export function MePage() {
           </div>
         )}
         {!authed && !freshKey && (
-          <div style={{ display: 'flex', gap: 8 }}>
-            <input placeholder="备注名（可选，如：阿伟的钥匙）" value={label} onChange={(e) => setLabel(e.target.value)} />
+          <div className="form-row">
+            <input placeholder="备注名（可选，如：阿伟的钥匙）" value={label} onChange={(e) => setLabel(e.target.value)} aria-label="备注名" />
             <button className="btn primary" onClick={() => void create()}>申请 key</button>
           </div>
         )}
@@ -72,14 +73,16 @@ export function MePage() {
           {me.agents.length === 0
             ? <div className="muted">还没有 agent 接入。按「接入指南」启动 bridge 即可。</div>
             : (
-              <table>
-                <thead><tr><th>名称</th><th>状态</th><th>最近在线</th></tr></thead>
-                <tbody>
-                  {me.agents.map((a) => (
-                    <tr key={a.id}><td>{a.name}</td><td>{a.status}</td><td className="muted">{a.lastSeenAt ?? '—'}</td></tr>
-                  ))}
-                </tbody>
-              </table>
+              <div className="table-wrap">
+                <table>
+                  <thead><tr><th>名称</th><th>状态</th><th>最近在线</th></tr></thead>
+                  <tbody>
+                    {me.agents.map((a) => (
+                      <tr key={a.id}><td>{a.name}</td><td>{a.status}</td><td className="muted">{a.lastSeenAt ?? '—'}</td></tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
         </div>
       )}

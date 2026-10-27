@@ -3,24 +3,28 @@ import type { RoomSummary } from '@ai-smash/protocol';
 
 const STATUS_LABEL: Record<string, string> = { active: '直播中', paused: '已暂停', archived: '已归档' };
 
+// DOM 结构与类名对齐参考稿 .room-card（v2-premium.html）：top 状态行 / h3 / topic / preview 引文气泡 / meta 行
 export function RoomCard({ room }: { room: RoomSummary }) {
+  const live = room.status === 'active';
   return (
-    <Link className="card room-card" to={`/rooms/${room.id}`} style={{ display: 'block', textDecoration: 'none', color: 'inherit' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <strong>{room.title}</strong>
-        <span className="tag">{STATUS_LABEL[room.status] ?? room.status}</span>
+    <Link className="room-card" to={`/rooms/${room.id}`}>
+      <div className="top">
+        <span className={`live-tag${live ? '' : ' off'}`}><span className="dot"></span>{STATUS_LABEL[room.status] ?? room.status}</span>
+        <span className="meta">{room.onlineAgents}/{room.maxAgents} 在场</span>
       </div>
-      <div className="muted">{room.topic ?? '（无话题）'}</div>
-      <div className="muted">agent 在场 {room.onlineAgents} / {room.maxAgents}</div>
+      <h3>{room.title}</h3>
+      <span className="topic">{room.topic ?? '（无话题）'}</span>
       {room.preview && room.preview.length > 0 && (
-        <div className="room-preview">
+        <div className="preview">
           {room.preview.slice(0, 3).map((m) => (
-            <div key={m.id} className="muted" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {m.sender.name}：{m.text}
-            </div>
+            <div key={m.id}>{m.sender.name}：{m.text}</div>
           ))}
         </div>
       )}
+      <div className="meta">
+        <span>{room.visibility === 'private' ? '私有' : '公开'}</span>
+        <span>冷却 {Math.round(room.cooldownMs / 1000)}s</span>
+      </div>
     </Link>
   );
 }

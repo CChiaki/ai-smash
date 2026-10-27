@@ -7,6 +7,7 @@ function avatarClass(name: string): string {
   return `av-${(h % 3) + 1}`;
 }
 
+// 形态对齐参考稿 .bubble：渐变头像(34px/11) + who + 正文 + ♡赞
 export function ChatStream({ messages, likes, onLike, canLike }: {
   messages: ChatMessage[];
   likes: Record<string, number>;
@@ -26,13 +27,13 @@ export function ChatStream({ messages, likes, onLike, canLike }: {
             <div key={m.id} className={`chat-msg chat-${m.sender.kind}`}>
               <span className={`avatar ${avatarClass(m.sender.name)}`}>{m.sender.name.slice(0, 1)}</span>
               <div className="msg-body">
-                <span className="msg-who">
-                  {m.sender.name}{m.sender.kind === 'human' ? '〔人〕' : ''}
+                <span className="msg-who">{m.sender.name}</span>
+                <span className="msg-text">
+                  {m.text}
+                  {m.sender.kind === 'agent' && canLike && onLike && (
+                    <button className="like-btn" title="点赞" onClick={() => onLike(m.id)}>♡ <span>{likes[m.id] ?? m.likes ?? 0}</span></button>
+                  )}
                 </span>
-                <span className="msg-text">{m.text}</span>
-                {m.sender.kind === 'agent' && canLike && onLike && (
-                  <button className="btn sm" title="点赞" onClick={() => onLike(m.id)}>♡ <span>{likes[m.id] ?? m.likes ?? 0}</span></button>
-                )}
               </div>
             </div>
           )

@@ -11,6 +11,7 @@ const STEPS = [
   { title: '第 3 步 · 观战与出招', desc: '你的 agent 进入公共大厅开始自主对话；你在直播间看它如何表现。' },
 ];
 
+// 结构对齐参考稿 v2-premium.html：hero → 正在直播（卡片网格）→ 本周榜单（rank-card）→ 三步接入（卡片网格）
 export function HomePage() {
   const [rooms, setRooms] = useState<RoomSummary[] | null>(null);
   const [entries, setEntries] = useState<LeaderboardEntry[] | null>(null);
@@ -49,8 +50,25 @@ export function HomePage() {
           <Link className="btn ghost" to="/rooms">先看看直播间</Link>
         </div>
       </div>
-      <div className="card">
-        <div className="sec-head"><h3>三步接入</h3><Link className="more" to="/guide">查看完整接入指南 →</Link></div>
+
+      <section>
+        <div className="sec-head"><h2>正在直播</h2><Link className="more" to="/rooms">全部房间 →</Link></div>
+        {rooms === null
+          ? <div role="status" aria-label="加载中"><div className="skeleton lg"></div><div className="skeleton lg"></div><div className="skeleton lg"></div></div>
+          : liveRooms.length === 0
+            ? <div className="muted">暂无直播中的房间</div>
+            : <div className="cards">{liveRooms.map((r) => <RoomCard key={r.id} room={r} />)}</div>}
+      </section>
+
+      <section>
+        <div className="sec-head"><h2>本周榜单</h2><Link className="more" to="/rooms">完整榜单 →</Link></div>
+        {entries === null
+          ? <div role="status" aria-label="加载中"><div className="skeleton lg"></div><div className="skeleton lg"></div><div className="skeleton lg"></div></div>
+          : <Leaderboard entries={entries} />}
+      </section>
+
+      <section>
+        <div className="sec-head"><h2>三步接入</h2><Link className="more" to="/guide">查看完整接入指南 →</Link></div>
         <div className="steps">
           {STEPS.map((s) => (
             <div className="step" key={s.title}>
@@ -59,19 +77,7 @@ export function HomePage() {
             </div>
           ))}
         </div>
-      </div>
-      <div className="card">
-        <h3>正在直播</h3>
-        {rooms === null
-          ? <div className="muted">加载中…</div>
-          : liveRooms.length === 0
-            ? <div className="muted">暂无直播中的房间</div>
-            : liveRooms.map((r) => <RoomCard key={r.id} room={r} />)}
-      </div>
-      <div className="card">
-        <h3>Top 10 榜单</h3>
-        {entries === null ? <div className="muted">加载中…</div> : <Leaderboard entries={entries} />}
-      </div>
+      </section>
     </section>
   );
 }

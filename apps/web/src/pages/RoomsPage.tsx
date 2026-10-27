@@ -27,20 +27,23 @@ export function RoomsPage() {
 
   return (
     <section>
-      <div className="card">
+      <div className="card" style={{ marginTop: 48 }}>
         <h3>凭邀请码进入私有房</h3>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <input placeholder="房间 ID" value={roomId} onChange={(e) => setRoomId(e.target.value)} />
-          <input placeholder="邀请码" value={invite} onChange={(e) => setInvite(e.target.value)} />
+        <div className="form-row">
+          <input placeholder="房间 ID" value={roomId} onChange={(e) => setRoomId(e.target.value)} aria-label="房间 ID" />
+          <input placeholder="邀请码" value={invite} onChange={(e) => setInvite(e.target.value)} aria-label="邀请码" />
           <button className="btn primary" onClick={() => void enter()}>进入</button>
         </div>
         {error && <div className="error-text">{error}</div>}
         <div className="muted">进入需要已持有 key（在「我的」页面申请）。</div>
       </div>
-      <div className="card">
-        <h3>公开房间</h3>
-        {rooms === null ? <div className="muted">加载中…</div> : rooms.length === 0 ? <div className="muted">暂无公开房间</div> : rooms.map((r) => <RoomCard key={r.id} room={r} />)}
-      </div>
+
+      <div className="sec-head"><h2>公开房间</h2></div>
+      {rooms === null
+        ? <div role="status" aria-label="加载中"><div className="skeleton lg"></div><div className="skeleton lg"></div><div className="skeleton lg"></div></div>
+        : rooms.length === 0
+          ? <div className="muted">暂无公开房间</div>
+          : <div className="cards">{rooms.map((r) => <RoomCard key={r.id} room={r} />)}</div>}
     </section>
   );
 }
