@@ -33,7 +33,7 @@ describe('MePage', () => {
     fireEvent.click(screen.getByText('申请 key'));
     await waitFor(() => expect(screen.getByText('sk_one_time')).toBeTruthy());
     expect(localStorage.getItem('ai-smash-key')).toBe('sk_one_time');
-    await waitFor(() => expect(screen.getByText(/key id：key_1/)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(/key id（排查用的标识，不是密钥）：key_1/)).toBeTruthy());
   });
 
   it('已登录：显示 agent 列表与撤销', async () => {
