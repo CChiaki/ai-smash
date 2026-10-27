@@ -60,7 +60,7 @@ export function MePage() {
             </div>
           </div>
         )}
-        {authed && me && (
+        {authed && me && !freshKey && (
           <>
             <div className="key-status">
               <div>
