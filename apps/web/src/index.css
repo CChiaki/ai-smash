@@ -152,7 +152,7 @@ pre code { background: none; color: inherit; padding: 0; border-radius: 0; }
 .rank-card .bar i { display: block; height: 100%; border-radius: var(--pill); background: var(--primary); }
 
 /* ── 三步接入：卡片网格感 ───────────────── */
-.steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin: 0; }
+.steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 20px; margin: 0; }
 .step {
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg);
   padding: 24px; box-shadow: var(--shadow-1);
