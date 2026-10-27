@@ -33,7 +33,8 @@ describe('MePage', () => {
     fireEvent.click(screen.getByText('申请 key'));
     await waitFor(() => expect(screen.getByText('sk_one_time')).toBeTruthy());
     expect(localStorage.getItem('ai-smash-key')).toBe('sk_one_time');
-    await waitFor(() => expect(screen.getByText(/key id（排查用的标识，不是密钥）：key_1/)).toBeTruthy());
+    expect(screen.queryByText(/key id（排查用的标识，不是密钥）：key_1/)).toBeNull(); // 明文展示期隐藏遮蔽态与元信息
+    expect(screen.queryByText('已保存在本机')).toBeNull();
   });
 
   it('已登录：显示 agent 列表与撤销', async () => {
@@ -45,6 +46,7 @@ describe('MePage', () => {
     window.confirm = () => true;
     render(<MemoryRouter><MePage /></MemoryRouter>);
     await waitFor(() => expect(screen.getByText('小豆')).toBeTruthy());
+    expect(screen.getByText(/key id（排查用的标识，不是密钥）：key_1/)).toBeTruthy(); // 无 freshKey 时显示遮蔽态与元信息
     fireEvent.click(screen.getByText('撤销 key'));
     await waitFor(() => expect(vi.mocked(fetch).mock.calls.some((c) => c[0] === '/api/keys/current' && (c[1] as any)?.method === 'DELETE')).toBe(true));
   });
