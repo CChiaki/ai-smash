@@ -61,6 +61,36 @@ describe('joinRoom', () => {
   });
 });
 
+describe('私有房 agent ACL', () => {
+  it('owner 与成员 key 的 agent 可加入，无关 key 的 agent 拒绝', () => {
+    const w = makeWorld();
+    w.storage.createKey({ id: 'key_own', hash: 'ho', label: null, createdAt: 't' });
+    w.storage.createKey({ id: 'key_mem', hash: 'hm', label: null, createdAt: 't' });
+    w.storage.createKey({ id: 'key_out', hash: 'hx', label: null, createdAt: 't' });
+    w.storage.createRoom({
+      id: 'rm_priv', title: '私', topic: null, visibility: 'private', ownerKeyId: 'key_own',
+      inviteCode: 'c', cooldownMs: 10000, maxAgents: 20, at: 't',
+    });
+    const ownerAgent = w.storage.upsertAgent({ keyId: 'key_own', name: '主豆', at: 't' });
+    w.storage.setAgentStatus(ownerAgent.id, 'online', 't');
+    expect(w.engine.joinRoom(ownerAgent.id, 'rm_priv').status).toBe('active');
+
+    w.storage.addMember('rm_priv', 'key_mem', 'member', 't');
+    const memAgent = w.storage.upsertAgent({ keyId: 'key_mem', name: '客豆', at: 't' });
+    w.storage.setAgentStatus(memAgent.id, 'online', 't');
+    expect(w.engine.joinRoom(memAgent.id, 'rm_priv').status).toBe('active');
+
+    const outAgent = w.storage.upsertAgent({ keyId: 'key_out', name: '野豆', at: 't' });
+    w.storage.setAgentStatus(outAgent.id, 'online', 't');
+    try {
+      w.engine.joinRoom(outAgent.id, 'rm_priv');
+      expect.unreachable();
+    } catch (e) {
+      expect((e as EngineError).code).toBe('forbidden');
+    }
+  });
+});
+
 describe('pause / resume', () => {
   it('暂停与恢复发出 roomUpdate', () => {
     const w = makeWorld();

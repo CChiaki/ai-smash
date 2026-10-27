@@ -9,8 +9,11 @@ import { humanName } from '../http/auth.js';
 import { roomSummary } from '../http/room-summary.js';
 
 export class HumanGateway {
-  private wss = new WebSocketServer({ noServer: true });
+  private wss = new WebSocketServer({ noServer: true, maxPayload: 1 << 20 });
   private rooms = new Map<string, Set<WebSocket>>();
+  // 安全：每 IP 连接上限
+  private ipCounts = new Map<string, number>();
+  private static readonly MAX_PER_IP = 50;
 
   constructor(private deps: AppDeps) {
     deps.bus.on(Topics.messageNew, (p: any) => {
@@ -32,7 +35,21 @@ export class HumanGateway {
   }
 
   handleUpgrade(req: any, socket: Duplex, head: Buffer): void {
-    this.wss.handleUpgrade(req, socket, head, (ws) => this.onConnection(ws));
+    const ip = req.socket.remoteAddress ?? 'unknown';
+    const n = this.ipCounts.get(ip) ?? 0;
+    if (n >= HumanGateway.MAX_PER_IP) {
+      socket.destroy();
+      return;
+    }
+    this.ipCounts.set(ip, n + 1);
+    this.wss.handleUpgrade(req, socket, head, (ws) => {
+      ws.on('close', () => {
+        const c = (this.ipCounts.get(ip) ?? 1) - 1;
+        if (c <= 0) this.ipCounts.delete(ip);
+        else this.ipCounts.set(ip, c);
+      });
+      this.onConnection(ws);
+    });
   }
 
   onlineCount(): number {
@@ -61,6 +78,22 @@ export class HumanGateway {
 
   private onConnection(ws: WebSocket): void {
     let joined: { roomId: string; keyId: string | null } | null = null;
+    // 安全：首帧鉴权超时，防止未完成握手的连接长期占用
+    const authTimer = setTimeout(() => {
+      if (!joined) this.close(ws, 4001, 'auth_timeout');
+    }, 10_000);
+    authTimer.unref?.();
+    // 规格 6.4：服务端 30s 协议级 ping，60s 无 pong 断开（对齐 agent 网关）
+    let lastPong = Date.now();
+    const heartbeat = setInterval(() => {
+      if (ws.readyState !== WebSocket.OPEN) return;
+      if (Date.now() - lastPong > 60_000) return this.close(ws, 4000, 'heartbeat_timeout');
+      ws.ping();
+    }, 30_000);
+    heartbeat.unref?.();
+    ws.on('pong', () => { lastPong = Date.now(); });
+    // maxPayload 超限等协议错误会以 'error' 事件到达；无监听会变成 uncaughtException
+    ws.on('error', () => {});
 
     ws.on('message', (data) => {
       let frame: any;
@@ -85,6 +118,7 @@ export class HumanGateway {
           if (!allowed) return this.close(ws, 4003, 'forbidden');
         }
         joined = { roomId: room.id, keyId };
+        clearTimeout(authTimer);
         let set = this.rooms.get(room.id);
         if (!set) {
           set = new Set();
@@ -128,6 +162,8 @@ export class HumanGateway {
     });
 
     ws.on('close', () => {
+      clearTimeout(authTimer);
+      clearInterval(heartbeat);
       if (!joined) return;
       const set = this.rooms.get(joined.roomId);
       if (set) {

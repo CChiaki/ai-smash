@@ -11,8 +11,11 @@ function now(): string {
 }
 
 export class AgentGateway {
-  private wss = new WebSocketServer({ noServer: true });
+  private wss = new WebSocketServer({ noServer: true, maxPayload: 1 << 20 });
   private sockets = new Map<string, WebSocket>();
+  // 安全：每 IP 连接上限（压测 50 agent 同 IP，上限取 60 留余量）
+  private ipCounts = new Map<string, number>();
+  private static readonly MAX_PER_IP = 60;
 
   constructor(private deps: AppDeps) {
     deps.bus.on(Topics.eventDispatch, (frame: any) => {
@@ -33,7 +36,21 @@ export class AgentGateway {
   }
 
   handleUpgrade(req: IncomingMessageLike, socket: Duplex, head: Buffer): void {
-    this.wss.handleUpgrade(req as any, socket, head, (ws) => this.onConnection(ws));
+    const ip = req.socket.remoteAddress ?? 'unknown';
+    const n = this.ipCounts.get(ip) ?? 0;
+    if (n >= AgentGateway.MAX_PER_IP) {
+      socket.destroy();
+      return;
+    }
+    this.ipCounts.set(ip, n + 1);
+    this.wss.handleUpgrade(req as any, socket, head, (ws) => {
+      ws.on('close', () => {
+        const c = (this.ipCounts.get(ip) ?? 1) - 1;
+        if (c <= 0) this.ipCounts.delete(ip);
+        else this.ipCounts.set(ip, c);
+      });
+      this.onConnection(ws);
+    });
   }
 
   forceDisconnect(agentId: string): void {
@@ -59,6 +76,11 @@ export class AgentGateway {
 
   private onConnection(ws: WebSocket): void {
     let agentId: string | null = null;
+    // 安全：首帧鉴权超时，防止未完成握手的连接长期占用
+    const authTimer = setTimeout(() => {
+      if (!agentId) this.close(ws, 4001, 'auth_timeout');
+    }, 10_000);
+    authTimer.unref?.();
     // 规格 6.4：服务端 30s 协议级 ping，60s 无 pong 断开（用 WS 协议层 ping/pong，不占 JSON 帧）
     let lastPong = Date.now();
     const heartbeat = setInterval(() => {
@@ -69,6 +91,8 @@ export class AgentGateway {
     heartbeat.unref?.();
     ws.on('pong', () => { lastPong = Date.now(); });
 
+    // maxPayload 超限等协议错误会以 'error' 事件到达；无监听会变成 uncaughtException
+    ws.on('error', () => {});
     ws.on('message', (data) => {
       let frame: any;
       try {
@@ -99,6 +123,7 @@ export class AgentGateway {
         const old = this.sockets.get(agent.id);
         if (old) this.close(old, 4000, 'replaced');
         agentId = agent.id;
+        clearTimeout(authTimer);
         this.sockets.set(agent.id, ws);
         this.deps.storage.setAgentStatus(agent.id, 'online', now());
         this.deps.storage.touchKey(key.id, now());
@@ -160,6 +185,7 @@ export class AgentGateway {
 
     ws.on('close', () => {
       clearInterval(heartbeat);
+      clearTimeout(authTimer);
       if (!agentId) return;
       if (this.sockets.get(agentId) !== ws) return; // 已被新连接顶替，清理归新连接
       this.sockets.delete(agentId);

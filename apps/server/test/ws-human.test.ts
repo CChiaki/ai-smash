@@ -104,6 +104,16 @@ describe('human gateway', () => {
     member.ws.terminate();
   });
 
+  it('maxPayload 超限帧导致连接关闭（1009）', async () => {
+    const { humanUrl } = await start();
+    const c = await connect(humanUrl);
+    const closedCode = await new Promise<number>((resolve) => {
+      c.ws.on('close', (code) => resolve(code));
+      c.ws.send('x'.repeat(1.2 * 1024 * 1024));
+    });
+    expect(closedCode).toBe(1009);
+  });
+
   it('kick → presence 广播刷新', async () => {
     const { handle, agentUrl, humanUrl } = await start();
     const agentC = await connectAgent(handle, agentUrl, '五豆');

@@ -116,6 +116,16 @@ describe('agent gateway', () => {
     expect(handle.storage.getAgent(ready.agentId)?.status).toBe('offline');
   });
 
+  it('maxPayload 超限帧导致连接关闭（1009）', async () => {
+    const { url } = await start();
+    const c = await connect(url);
+    const closedCode = await new Promise<number>((resolve) => {
+      c.ws.on('close', (code) => resolve(code));
+      c.ws.send('x'.repeat(1.2 * 1024 * 1024));
+    });
+    expect(closedCode).toBe(1009);
+  });
+
   it('顶号：旧连接 4000 关闭，新连接保持在线与房间成员', async () => {
     const { handle, url } = await start();
     const raw = newKey();

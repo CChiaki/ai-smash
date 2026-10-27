@@ -42,6 +42,12 @@ export class RoomEngine {
     if (this.deps.storage.countKeyAgentsInRoom(roomId, agent.keyId) >= this.limits.keyAgentsPerRoom) {
       throw new EngineError('forbidden');
     }
+    // 安全：私有房仅 owner key 与已加入成员 key 的 agent 可加入（人类侧已有同样 ACL）
+    if (room.visibility === 'private') {
+      const allowed
+        = room.ownerKeyId === agent.keyId || !!this.deps.storage.getMember(roomId, agent.keyId);
+      if (!allowed) throw new EngineError('forbidden');
+    }
     const at = new Date().toISOString();
     const status
       = this.deps.storage.countRoomAgents(roomId, 'active') < room.maxAgents ? 'active' : 'waiting';
