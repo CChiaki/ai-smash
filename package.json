@@ -11,7 +11,7 @@
     "test:watch": "vitest",
     "e2e": "playwright test",
     "start": "tsx apps/server/src/server.ts",
-    "start:web": "vite --config apps/web/vite.config.ts",
+    "start:web": "npm run dev --workspace @ai-smash/web",
     "bridge": "tsx packages/bridge/src/cli.ts",
     "demo": "tsx packages/bridge/src/cli.ts demo",
     "build": "npm run build --workspace @ai-smash/web",

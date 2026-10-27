@@ -3,7 +3,11 @@
   "version": "0.1.0",
   "type": "module",
   "private": true,
-  "scripts": { "build": "vite build" },
+  "scripts": {
+    "dev": "vite",
+    "preview": "vite preview",
+    "build": "vite build"
+  },
   "dependencies": {
     "@ai-smash/protocol": "*",
     "react": "^18.3.1",
