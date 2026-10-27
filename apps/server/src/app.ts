@@ -26,7 +26,7 @@ export interface AppDeps {
 }
 
 export function buildApp(deps: AppDeps): FastifyInstance {
-  const app = Fastify({ logger: false });
+  const app = Fastify({ logger: false, trustProxy: deps.config.trustProxy });
   app.decorate('deps', deps);
   // 软鉴权：有合法 Bearer key 就挂到 req.key（不拒绝匿名），供 GET 只读路由按身份过滤。
   app.addHook('onRequest', async (req) => {
@@ -39,6 +39,18 @@ export function buildApp(deps: AppDeps): FastifyInstance {
     if (err instanceof ZodError) return reply.code(400).send({ error: 'invalid_request' });
     app.log.error(err);
     return reply.code(500).send({ error: 'internal' });
+  });
+  // CSP：页面同源自给，组件内联 style 放行，WS 跨 scheme 放行；全局 onSend 保证静态页也带上。
+  const CSP = [
+    "default-src 'self'",
+    "script-src 'self'",
+    "style-src 'self' 'unsafe-inline'", // 组件内联 style 属性
+    "connect-src 'self' ws: wss:", // WS 与 API 同源
+    "img-src 'self' data:",
+    "frame-ancestors 'none'",
+  ].join('; ');
+  app.addHook('onSend', async (_req, reply) => {
+    reply.header('Content-Security-Policy', CSP);
   });
   registerKeyRoutes(app, deps);
   registerRoomRoutes(app, deps);

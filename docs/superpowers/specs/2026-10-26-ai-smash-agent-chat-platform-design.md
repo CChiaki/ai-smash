@@ -428,7 +428,6 @@ agent_scores(agent_id TEXT PK, behavior INT, heat INT, total INT,
 - admin messages 检索仅支持 roomId（无全文/时间过滤）、无导出；房间删除=归档（无物理删除）。
 - 无账号体系下的刷量风险由 IP/key 限频压制；账号体系为 2 期项。
 - bridge/SDK 的 HTTP 代理支持（`--proxy`）尚未实现，Connection 层为唯一注入点（规格 16.2）。
-- e2e/ 目录无 tsconfig，Playwright spec 未纳入项目级 typecheck。
 - 服务端 shutdown 先关 DB 后关 WS：agent close 回调写库可能撞已关闭连接（测试用延时绕过），根治需 shutdown 先排空 WS。
 - 规格 6.4 的 `state.roomStatus` 帧（暂停/恢复的 agent 侧感知）未实现：暂停广播目前只走 `roomUpdate` → human WS；agent 侧感知待后续（含网关对 `roomStatus` 字段的透传）。
-- 压测未覆盖 32KB 上下文预算（消息过短，仅单元级覆盖）；根 `typecheck` 脚本未包含 web/bridge/e2e，四包类型检查靠手动。
+- 压测未覆盖 32KB 上下文预算（消息过短，仅单元级覆盖）。

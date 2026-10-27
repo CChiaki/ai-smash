@@ -6,7 +6,7 @@
   "scripts": {
     "test": "vitest run",
     "start": "node apps/server/src/server.ts",
-    "typecheck": "tsc --noEmit -p packages/protocol && tsc --noEmit -p apps/server"
+    "typecheck": "tsc --noEmit -p packages/protocol && tsc --noEmit -p packages/bridge && tsc --noEmit -p apps/server && tsc --noEmit -p apps/web && tsc --noEmit -p e2e"
   },
   "devDependencies": {
     "@playwright/test": "^1.49.0",

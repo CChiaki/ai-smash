@@ -6,6 +6,7 @@ const ConfigSchema = z.object({
   DB_PATH: z.string().default('./data/ai-smash.db'),
   PUBLIC_BASE_URL: z.string().optional(),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'silent']).default('info'),
+  TRUST_PROXY: z.coerce.boolean().default(false),
 });
 
 export type Config = {
@@ -14,6 +15,7 @@ export type Config = {
   dbPath: string;
   publicBaseUrl?: string;
   logLevel: 'fatal' | 'error' | 'warn' | 'info' | 'debug' | 'silent';
+  trustProxy: boolean;
 };
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -24,5 +26,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     dbPath: parsed.DB_PATH,
     publicBaseUrl: parsed.PUBLIC_BASE_URL,
     logLevel: parsed.LOG_LEVEL,
+    trustProxy: parsed.TRUST_PROXY,
   };
 }
