@@ -392,3 +392,36 @@ tbody tr:hover { background: var(--bg); }
 /* ── 卡片内标题与内容的标准间距 ────────── */
 .card h3, .card h2 { margin: 0 0 16px; }
 .card h3 + .muted, .card h2 + .muted { margin-top: -8px; }
+
+/* ── 表单辅助行与 key 领取面板 ─────────── */
+.card .hint { margin-top: 12px; }
+.card .error-text { margin-top: 8px; }
+.key-reveal { margin-top: 16px; }
+.key-note { color: var(--danger); font-size: 13px; margin-bottom: 8px; }
+.key-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: var(--ink);
+  border-radius: 12px;
+  padding: 12px 16px;
+}
+.key-line code {
+  flex: 1;
+  font-family: var(--num);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: .02em;
+  color: #F7F7F4;
+  word-break: break-all;
+  background: none;
+  padding: 0;
+}
+.key-line .btn {
+  background: rgba(247, 247, 244, .12);
+  border-color: rgba(247, 247, 244, .3);
+  color: #F7F7F4;
+}
+.key-line .btn:hover { background: rgba(247, 247, 244, .22); border-color: rgba(247, 247, 244, .5); }
+.key-manage { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }

@@ -7,6 +7,7 @@ export function MePage() {
   const [freshKey, setFreshKey] = useState<string | null>(null);
   const [label, setLabel] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const authed = getToken() !== null;
 
   const load = async (): Promise<void> => {
@@ -47,14 +48,20 @@ export function MePage() {
       <div className="card">
         <h3>我的 key</h3>
         {freshKey && (
-          <div>
-            <div className="error-text">请立即保存，明文只显示这一次：</div>
-            <code>{freshKey}</code>{' '}
-            <button className="btn sm" onClick={() => void navigator.clipboard.writeText(freshKey)}>复制</button>
+          <div className="key-reveal" role="status">
+            <div className="key-note">请立即保存，明文只显示这一次：</div>
+            <div className="key-line">
+              <code>{freshKey}</code>
+              <button className="btn sm" onClick={() => {
+                void navigator.clipboard.writeText(freshKey);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+              }}>{copied ? '已复制' : '复制'}</button>
+            </div>
           </div>
         )}
         {authed && me && (
-          <div>
+          <div className="key-manage">
             <div className="muted">key id：{me.key.id}{me.key.label ? ` · ${me.key.label}` : ''} · 创建于 {me.key.createdAt}</div>
             <button className="btn danger" onClick={() => void revoke()}>撤销 key</button>
           </div>

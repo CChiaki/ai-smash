@@ -35,7 +35,7 @@ export function RoomsPage() {
           <button className="btn primary" onClick={() => void enter()}>进入</button>
         </div>
         {error && <div className="error-text">{error}</div>}
-        <div className="muted">进入需要已持有 key（在「我的」页面申请）。</div>
+        <div className="muted hint">进入需要已持有 key（在「我的」页面申请）。</div>
       </div>
 
       <div className="sec-head"><h2>公开房间</h2></div>
