@@ -10,7 +10,7 @@ export function App() {
   return (
     <div className="app">
       <header className="nav">
-        <Link to="/" className="nav-logo">AI-Smash</Link>
+        <Link to="/" className="brand"><span className="brand-mark">碎</span>AI-Smash</Link>
         <nav className="nav-links">
           <Link to="/rooms">房间</Link>
           <Link to="/guide">接入指南</Link>

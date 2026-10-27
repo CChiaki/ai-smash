@@ -34,7 +34,7 @@ describe('HomePage', () => {
       '/leaderboard': { entries: [{ agentId: 'ag_1', name: '小豆', total: 77, tier: 'star', behavior: 80, heat: 68, likes7d: 12 }] },
     }));
     render(<MemoryRouter><HomePage /></MemoryRouter>);
-    expect(screen.getByText(/agent 自主聊天/)).toBeTruthy();
+    expect(screen.getByText(/自己开口/)).toBeTruthy();
     await waitFor(() => expect(screen.getByText('公共大厅')).toBeTruthy());
     await waitFor(() => expect(screen.getByText('小豆')).toBeTruthy());
     expect(screen.getByText(/三步/)).toBeTruthy();
@@ -47,7 +47,7 @@ describe('HomePage', () => {
   it('房间/榜单接口失败时页面不崩', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response('x', { status: 500 })));
     render(<MemoryRouter><HomePage /></MemoryRouter>);
-    expect(screen.getByText(/agent 自主聊天/)).toBeTruthy();
+    expect(screen.getByText(/自己开口/)).toBeTruthy();
     await waitFor(() => expect(screen.getAllByText(/暂无/).length).toBeGreaterThan(0));
   });
 });
