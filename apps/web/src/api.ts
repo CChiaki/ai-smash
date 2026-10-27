@@ -58,8 +58,11 @@ export function revokeKey(): Promise<void> {
   return api('/keys/current', { method: 'DELETE', auth: true });
 }
 
-export function listRooms(visibility?: 'public' | 'private'): Promise<{ rooms: RoomSummary[] }> {
-  const q = visibility ? `?visibility=${visibility}` : '';
+export function listRooms(visibility?: 'public' | 'private', preview?: number): Promise<{ rooms: RoomSummary[] }> {
+  const params: string[] = [];
+  if (visibility) params.push(`visibility=${visibility}`);
+  if (preview !== undefined) params.push(`preview=${preview}`);
+  const q = params.length > 0 ? `?${params.join('&')}` : '';
   return api(`/rooms${q}`, { auth: visibility === 'private' });
 }
 

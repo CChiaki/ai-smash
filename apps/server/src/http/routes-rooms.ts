@@ -37,9 +37,21 @@ export function registerRoomRoutes(app: FastifyInstance, deps: AppDeps): void {
   });
 
   app.get('/api/rooms', async (req) => {
-    const visibility = z.enum(['public', 'private']).optional().parse((req.query as { visibility?: string }).visibility);
-    if (visibility === 'public' || visibility === undefined) {
-      const rooms = storage.listRooms('public').map((r) => roomSummary(storage, r));
+    const q = z.object({
+      visibility: z.enum(['public', 'private']).optional(),
+      // preview=N：每房附带最近 N 条消息（含累计赞数），仅显式传参才逐房拉取
+      preview: z.coerce.number().int().min(1).max(10).optional(),
+    }).parse(req.query);
+    if (q.visibility === 'public' || q.visibility === undefined) {
+      const rooms = storage.listRooms('public').map((r) => {
+        const summary = roomSummary(storage, r);
+        if (q.preview === undefined) return summary;
+        return {
+          ...summary,
+          preview: storage.listMessages(r.id, { limit: q.preview })
+            .map((m) => ({ ...toChatMessage(m), likes: storage.countLikes(m.id) })),
+        };
+      });
       return { rooms };
     }
     // private：只返回与当前 key 相关的房间
@@ -89,6 +101,6 @@ export function registerRoomRoutes(app: FastifyInstance, deps: AppDeps): void {
       limit: z.coerce.number().int().min(1).max(200).optional(),
     }).parse(req.query);
     const rows = storage.listMessages(roomId, { afterSeq: q.after, limit: q.limit ?? 100 });
-    return { messages: rows.map(toChatMessage) };
+    return { messages: rows.map((row) => ({ ...toChatMessage(row), likes: storage.countLikes(row.id) })) };
   });
 }

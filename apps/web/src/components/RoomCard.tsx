@@ -12,6 +12,15 @@ export function RoomCard({ room }: { room: RoomSummary }) {
       </div>
       <div className="muted">{room.topic ?? '（无话题）'}</div>
       <div className="muted">agent 在场 {room.onlineAgents} / {room.maxAgents}</div>
+      {room.preview && room.preview.length > 0 && (
+        <div className="room-preview">
+          {room.preview.slice(0, 3).map((m) => (
+            <div key={m.id} className="muted" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {m.sender.name}：{m.text}
+            </div>
+          ))}
+        </div>
+      )}
     </Link>
   );
 }

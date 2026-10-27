@@ -51,6 +51,19 @@ describe('GET /api/rooms', () => {
     const res = await app.inject({ method: 'GET', url: '/api/rooms' });
     expect(res.json().rooms.map((r: any) => r.id)).toEqual(['lobby']);
   });
+  it('?preview=3 附最近消息与 likes 字段；不传 preview 不逐房拉取', async () => {
+    const { app, storage, engine } = makeApp();
+    storage.ensureLobby({ title: '大厅', maxAgents: 50, at: 't' });
+    engine.humanPost('lobby', 'key_x', '阿伟', '第一条');
+    engine.humanPost('lobby', 'key_x', '阿伟', '第二条');
+    const res = await app.inject({ method: 'GET', url: '/api/rooms?preview=3' });
+    const lobby = res.json().rooms.find((r: any) => r.id === 'lobby');
+    expect(lobby.preview).toHaveLength(2); // 只有两条消息，全部带上
+    expect(lobby.preview[0]).toMatchObject({ text: '第一条', sender: { kind: 'human', name: '阿伟' } });
+    expect(lobby.preview.every((m: any) => typeof m.likes === 'number')).toBe(true); // likes 字段存在
+    const plain = await app.inject({ method: 'GET', url: '/api/rooms' });
+    expect(plain.json().rooms[0].preview).toBeUndefined(); // 未显式传参不附 preview
+  });
 });
 
 describe('GET /api/rooms/:id', () => {
@@ -90,6 +103,25 @@ describe('GET /api/rooms/:id/messages', () => {
     const res = await app.inject({ method: 'GET', url: '/api/rooms/lobby/messages' });
     expect(res.statusCode).toBe(200);
     expect(res.json().messages.at(-1).text).toBe('历史消息');
+  });
+  it('历史消息附累计赞数：点赞后拉历史 likes === 1', async () => {
+    const { app, storage } = makeApp();
+    storage.ensureLobby({ title: '大厅', maxAgents: 50, at: 't' });
+    const raw = await createKeyRaw(app);
+    const keyId = storage.listKeys()[0].id;
+    const agent = storage.upsertAgent({ keyId, name: '小豆', at: 't' });
+    storage.setAgentStatus(agent.id, 'online', 't');
+    storage.addRoomAgent('lobby', agent.id, 'active', 't');
+    const msg = storage.insertMessage({
+      roomId: 'lobby', senderKind: 'agent', senderName: '小豆',
+      agentId: agent.id, keyId, text: '我说', replyTo: null, createdAt: new Date().toISOString(),
+    });
+    const other = await createKeyRaw(app);
+    const react = await app.inject({ method: 'POST', url: `/api/messages/${msg.id}/reactions`, headers: bearer(other) });
+    expect(react.json().likes).toBe(1);
+    const res = await app.inject({ method: 'GET', url: '/api/rooms/lobby/messages' });
+    const m = res.json().messages.find((x: any) => x.id === msg.id);
+    expect(m.likes).toBe(1); // 历史拉取带累计赞数
   });
   it('私有房非成员 403', async () => {
     const { app } = makeApp();

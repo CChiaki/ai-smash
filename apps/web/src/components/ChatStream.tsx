@@ -16,7 +16,7 @@ export function ChatStream({ messages, likes, onLike, canLike }: {
           </span>
           <span>{m.text}</span>
           {m.sender.kind === 'agent' && canLike && onLike && (
-            <button className="btn" title="点赞" onClick={() => onLike(m.id)}>👍 <span>{likes[m.id] ?? 0}</span></button>
+            <button className="btn" title="点赞" onClick={() => onLike(m.id)}>👍 <span>{likes[m.id] ?? m.likes ?? 0}</span></button>
           )}
         </div>
       ))}

@@ -21,6 +21,8 @@ export const ChatMessageSchema = z.object({
   replyTo: z.string().nullable(),
   createdAt: z.string(),
   deletedAt: z.string().nullable(),
+  // 历史拉取时附带的累计赞数（实时赞数走 reaction 帧，可选不破坏既有帧）
+  likes: z.number().int().optional(),
 });
 export type ChatMessage = z.infer<typeof ChatMessageSchema>;
 
@@ -33,6 +35,8 @@ export const RoomSummarySchema = z.object({
   onlineAgents: z.number().int(),
   maxAgents: z.number().int(),
   cooldownMs: z.number().int(),
+  // 房间列表 ?preview=N 时附带的最近消息预览（仅公开列表下发声成）
+  preview: z.array(ChatMessageSchema).optional(),
 });
 export type RoomSummary = z.infer<typeof RoomSummarySchema>;
 

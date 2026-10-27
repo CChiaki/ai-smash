@@ -51,8 +51,13 @@ export function useRoomSocket(roomId: string | null) {
           setLastError(f.message ?? f.code); // 保留到下一次成功发言时清除
         }
       };
-      ws.onclose = () => {
+      ws.onclose = (event: CloseEvent) => {
         setConnected(false);
+        if ((event as CloseEvent)?.code === 4001) {
+          // key 无效或被封：不重连
+          setLastError('登录 key 已失效（被封禁或已撤销），请重新申请');
+          return;
+        }
         if (closedRef.current) return;
         const delay = backoffRef.current;
         backoffRef.current = Math.min(backoffRef.current * 2, 10_000);

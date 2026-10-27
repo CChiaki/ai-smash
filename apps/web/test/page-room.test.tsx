@@ -14,6 +14,7 @@ afterEach(() => {
 
 const humanMsg = { id: 'm_1', roomId: 'r', seq: 1, sender: { kind: 'human', name: '阿伟' }, text: '人话', replyTo: null, createdAt: 't', deletedAt: null };
 const agentMsg = { id: 'm_2', roomId: 'r', seq: 2, sender: { kind: 'agent', name: '小豆', agentId: 'ag_1' }, text: '-agent', replyTo: null, createdAt: 't', deletedAt: null };
+const laterMsg = { id: 'm_3', roomId: 'r', seq: 3, sender: { kind: 'agent', name: '小豆', agentId: 'ag_1' }, text: '-后来的消息', replyTo: null, createdAt: 't', deletedAt: null };
 
 describe('ChatStream / AgentPanel', () => {
   it('agent 消息显示赞按钮与赞数；点击回调', () => {
@@ -22,6 +23,10 @@ describe('ChatStream / AgentPanel', () => {
     fireEvent.click(screen.getByTitle('点赞'));
     expect(onLike).toHaveBeenCalledWith('m_2');
     expect(screen.getByText('3')).toBeTruthy();
+  });
+  it('无实时赞数时回退显示消息自带的历史赞数 m.likes', () => {
+    render(<ChatStream messages={[{ ...agentMsg, likes: 2 }] as any} likes={{}} onLike={() => {}} canLike />);
+    expect(screen.getByText('2')).toBeTruthy();
   });
 
   it('AgentPanel 显示状态与房主踢出按钮', () => {
@@ -78,6 +83,25 @@ describe('RoomPage', () => {
     );
     await waitFor(() => expect(screen.getByText('测试房')).toBeTruthy());
     expect(screen.getByText('-agent')).toBeTruthy();
+  });
+
+  it('回放模式（?at=2）：seq 大于 at 的消息不渲染', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      if (url === '/api/rooms/r1') {
+        return new Response(JSON.stringify({ id: 'r1', title: '测试房', topic: null, visibility: 'public', status: 'active', onlineAgents: 1, maxAgents: 20, cooldownMs: 10000 }), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      if (url.startsWith('/api/rooms/r1/messages')) {
+        return new Response(JSON.stringify({ messages: [humanMsg, agentMsg, laterMsg] }), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      throw new Error(`unexpected ${url}`);
+    }));
+    render(
+      <MemoryRouter initialEntries={['/rooms/r1?at=2']}>
+        <Routes><Route path="/rooms/:id" element={<RoomPage />} /></Routes>
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(screen.getByText('-agent')).toBeTruthy()); // seq=2 保留
+    expect(screen.queryByText('-后来的消息')).toBeNull(); // seq=3 > at=2 截断
   });
 
   it('实时模式：房主可见控制条且暂停按钮生效', async () => {

@@ -14,6 +14,7 @@ export function RoomPage() {
   const { id = '' } = useParams();
   const [params] = useSearchParams();
   const at = params.get('at');
+  const atSeq = at !== null ? Number(at) : null; // ?at= 回放截止 seq
   const replay = at !== null;
 
   const [room, setRoom] = useState<RoomView | null>(null);
@@ -38,12 +39,15 @@ export function RoomPage() {
   useEffect(() => {
     if (!replay) return;
     void fetchMessages(id)
-      .then((r) => setHistory(r.messages))
+      .then((r) => setHistory(
+        // 回放只展示 seq <= at 的消息（at 非法时不截断，按全量渲染）
+        atSeq !== null && Number.isFinite(atSeq) ? r.messages.filter((m) => m.seq <= atSeq) : r.messages,
+      ))
       .catch((e) => {
         if (e instanceof ApiError && e.status === 403) setHistoryError('私有房仅成员可见历史');
         setHistory([]);
       });
-  }, [id, replay]);
+  }, [id, replay, atSeq]);
 
   // 节奏设置默认值：按房间同步一次，优先 ready.room.cooldownMs（RoomSummary 自带），回退全局默认
   useEffect(() => {

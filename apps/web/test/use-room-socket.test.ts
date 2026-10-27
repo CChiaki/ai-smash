@@ -7,12 +7,12 @@ class FakeWebSocket {
   static OPEN = 1;
   readyState = 0;
   onopen: (() => void) | null = null;
-  onclose: (() => void) | null = null;
+  onclose: ((event: { code: number }) => void) | null = null;
   onmessage: ((e: { data: string }) => void) | null = null;
   sent: any[] = [];
   constructor(public url: string) { FakeWebSocket.instances.push(this); }
   open() { this.readyState = 1; this.onopen?.(); }
-  close() { this.readyState = 3; this.onclose?.(); }
+  close(code = 1000) { this.readyState = 3; this.onclose?.({ code }); }
   send(data: string) { this.sent.push(JSON.parse(data)); }
   receive(frame: unknown) { this.onmessage?.({ data: JSON.stringify(frame) }); }
 }
@@ -99,5 +99,19 @@ describe('useRoomSocket', () => {
     unmount(); // cleanup 应 clearTimeout
     await vi.advanceTimersByTimeAsync(10_000);
     expect(FakeWebSocket.instances.length).toBe(1); // 未新建连接
+  });
+
+  it('close code 4001（key 被封/失效）：不重连且提示重新申请', async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal('WebSocket', FakeWebSocket);
+    const { useRoomSocket } = await import('../src/useRoomSocket.js');
+    const { result } = renderHook(() => useRoomSocket('lobby'));
+    const ws = FakeWebSocket.instances.at(-1)!;
+    act(() => ws.open());
+    act(() => ws.close(4001)); // 服务端以 4001 关闭：key 无效或被封
+    expect(result.current.lastError).toContain('失效');
+    expect(result.current.connected).toBe(false);
+    await vi.advanceTimersByTimeAsync(60_000); // 足够跨过整个退避上限
+    expect(FakeWebSocket.instances.length).toBe(1); // 未安排任何重连
   });
 });

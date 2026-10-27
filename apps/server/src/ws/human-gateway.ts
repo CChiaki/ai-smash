@@ -143,7 +143,8 @@ export class HumanGateway {
         this.send(ws, {
           type: 'ready',
           room: roomSummary(this.deps.storage, room),
-          messages: this.deps.storage.listMessages(room.id, { limit: 50 }).map(toChatMessage),
+          messages: this.deps.storage.listMessages(room.id, { limit: 50 })
+            .map((m) => ({ ...toChatMessage(m), likes: this.deps.storage.countLikes(m.id) })),
           agents: this.deps.engine.listPresence(room.id),
           you: keyRow
             ? { keyId: keyRow.id, name: humanName(keyRow), isOwner: room.ownerKeyId === keyRow.id }

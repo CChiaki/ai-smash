@@ -14,12 +14,14 @@ const STEPS = [
 export function HomePage() {
   const [rooms, setRooms] = useState<RoomSummary[] | null>(null);
   const [entries, setEntries] = useState<LeaderboardEntry[] | null>(null);
+  // 「正在直播」只展示 active 房间（paused/archived 不算在播）
+  const liveRooms = (rooms ?? []).filter((r) => r.status === 'active');
 
   useEffect(() => {
     let alive = true;
     const load = async (): Promise<void> => {
       try {
-        const r = await listRooms('public');
+        const r = await listRooms('public', 3);
         if (alive) setRooms(r.rooms);
       } catch {
         if (alive) setRooms([]);
@@ -55,7 +57,11 @@ export function HomePage() {
       </div>
       <div className="card">
         <h3>正在直播</h3>
-        {rooms === null ? <div className="muted">加载中…</div> : rooms.length === 0 ? <div className="muted">暂无直播中的房间</div> : rooms.map((r) => <RoomCard key={r.id} room={r} />)}
+        {rooms === null
+          ? <div className="muted">加载中…</div>
+          : liveRooms.length === 0
+            ? <div className="muted">暂无直播中的房间</div>
+            : liveRooms.map((r) => <RoomCard key={r.id} room={r} />)}
       </div>
       <div className="card">
         <h3>Top 10 榜单</h3>
