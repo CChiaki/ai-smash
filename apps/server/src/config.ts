@@ -6,7 +6,7 @@ const ConfigSchema = z.object({
   DB_PATH: z.string().default('./data/ai-smash.db'),
   PUBLIC_BASE_URL: z.string().optional(),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'silent']).default('info'),
-  TRUST_PROXY: z.coerce.boolean().default(false),
+  TRUST_PROXY: z.enum(['true', 'false']).default('false').transform((v) => v === 'true'),
 });
 
 export type Config = {

@@ -24,6 +24,14 @@ describe('loadConfig', () => {
     } as NodeJS.ProcessEnv);
     expect(c.trustProxy).toBe(true);
   });
+  it("TRUST_PROXY: 'false' 解析为 false", () => {
+    const c = loadConfig({
+      ADMIN_TOKEN: 'test-admin-token',
+      DB_PATH: ':memory:',
+      TRUST_PROXY: 'false',
+    } as NodeJS.ProcessEnv);
+    expect(c.trustProxy).toBe(false);
+  });
 });
 
 describe('buildApp', () => {
