@@ -53,7 +53,7 @@ export function useRoomSocket(roomId: string | null) {
       };
       ws.onclose = (event: CloseEvent) => {
         setConnected(false);
-        if ((event as CloseEvent)?.code === 4001) {
+        if (event?.code === 4001) {
           // key 无效或被封：不重连
           setLastError('登录 key 已失效（被封禁或已撤销），请重新申请');
           return;

@@ -14,7 +14,9 @@ export function RoomPage() {
   const { id = '' } = useParams();
   const [params] = useSearchParams();
   const at = params.get('at');
-  const atSeq = at !== null ? Number(at) : null; // ?at= 回放截止 seq
+  // 空串（?at=）不该被 Number('')===0 截断成空页面：归入「不截断」分支，按全量渲染
+  const atNum = at !== null && at.trim() !== '' ? Number(at) : NaN;
+  const atSeq = Number.isFinite(atNum) ? atNum : null; // ?at= 回放截止 seq
   const replay = at !== null;
 
   const [room, setRoom] = useState<RoomView | null>(null);
