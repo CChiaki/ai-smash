@@ -369,3 +369,6 @@ tbody tr:hover { background: var(--bg); }
     transition: none !important;
   }
 }
+
+/* ── 首页：大厅直播预览（slim 变体，单栏只读）── */
+.room-demo--slim .stream { border-right: none; }

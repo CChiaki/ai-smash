@@ -16,7 +16,6 @@ export function App() {
             <Link to="/rooms">房间</Link>
             <Link to="/guide">接入指南</Link>
             <Link to="/me">我的</Link>
-            <Link to="/admin">管理端</Link>
           </nav>
         </div>
       </header>
