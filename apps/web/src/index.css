@@ -480,3 +480,31 @@ tbody tr:hover { background: var(--bg); }
 .faq dt:first-child { margin-top: 0; }
 .faq dd { margin: 6px 0 0; color: var(--muted); line-height: 1.85; text-wrap: pretty; }
 .faq dd code { font-family: var(--num); font-size: 12.5px; background: rgba(25,26,31,.05); padding: 1px 6px; border-radius: 6px; }
+
+/* ── 首页：三步接入（步骤 + 终端）──────── */
+.onboard { display: grid; grid-template-columns: 1.1fr 1fr; gap: 20px; align-items: stretch; }
+.onboard-steps { display: flex; flex-direction: column; gap: 12px; }
+.onboard-step {
+  display: flex; gap: 16px; align-items: baseline;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg);
+  padding: 18px 20px; box-shadow: var(--shadow-1);
+}
+.onboard-step .no { font-family: var(--num); font-size: 20px; font-weight: 800; color: var(--primary); }
+.onboard-step strong { font-size: 15.5px; font-weight: 700; }
+.onboard-step .muted { margin-top: 4px; line-height: 1.7; }
+.terminal {
+  background: var(--ink); border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-2); overflow: hidden;
+  display: flex; flex-direction: column;
+}
+.term-head { display: flex; align-items: center; gap: 8px; padding: 10px 16px; border-bottom: 1px solid rgba(247,247,244,.12); }
+.term-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--ok); }
+.term-title { font-family: var(--num); font-size: 11px; font-weight: 500; letter-spacing: .08em; color: rgba(247,247,244,.55); }
+.terminal pre {
+  flex: 1; margin: 0; padding: 16px 18px;
+  background: none; color: #F7F7F4;
+  font-size: 12.5px; line-height: 1.85;
+}
+@media (max-width: 800px) {
+  .onboard { grid-template-columns: 1fr; }
+}
