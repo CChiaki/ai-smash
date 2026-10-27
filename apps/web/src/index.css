@@ -51,10 +51,11 @@ pre {
   overflow-x: auto; line-height: 1.6;
 }
 code {
-  background: var(--ink); color: var(--bg);
-  border-radius: 8px; padding: 2px 8px;
+  background: rgba(25, 26, 31, .07); color: var(--ink);
+  border-radius: 6px; padding: 1px 6px;
   word-break: break-all;
 }
+pre code { background: none; color: inherit; padding: 0; border-radius: 0; }
 :focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; border-radius: 4px; }
 
 /* ── 顶栏与品牌 ─────────────────────────── */
