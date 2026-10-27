@@ -27,7 +27,7 @@ export function RoomsPage() {
 
   return (
     <section>
-      <div className="card" style={{ marginTop: 48 }}>
+      <div className="card first-card">
         <h3>凭邀请码进入私有房</h3>
         <div className="form-row">
           <input placeholder="房间 ID" value={roomId} onChange={(e) => setRoomId(e.target.value)} aria-label="房间 ID" />

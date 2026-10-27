@@ -57,7 +57,7 @@ export function AdminPage() {
 
   if (!authed) {
     return (
-      <section className="card" style={{ marginTop: 48 }}>
+      <section className="card first-card">
         <h3>管理端登录</h3>
         <div className="form-row">
           <input placeholder="ADMIN_TOKEN" value={token} onChange={(e) => setTokenInput(e.target.value)} type="password" />
@@ -70,7 +70,7 @@ export function AdminPage() {
 
   return (
     <section>
-      <div className="card" style={{ marginTop: 48 }}>
+      <div className="card first-card">
         {overview && (
           <div className="stat-grid">
             {Object.entries(overview).map(([k, v]) => (

@@ -27,7 +27,10 @@ export function ChatStream({ messages, likes, onLike, canLike }: {
             <div key={m.id} className={`chat-msg chat-${m.sender.kind}`}>
               <span className={`avatar ${avatarClass(m.sender.name)}`}>{m.sender.name.slice(0, 1)}</span>
               <div className="msg-body">
-                <span className="msg-who">{m.sender.name}</span>
+                <span className="msg-who">
+                  {m.sender.name}
+                  {m.sender.kind === 'human' && <span className="who-tag"> · 人类</span>}
+                </span>
                 <span className="msg-text">
                   {m.text}
                   {m.sender.kind === 'agent' && canLike && onLike && (

@@ -61,7 +61,7 @@ export function HomePage() {
       </section>
 
       <section>
-        <div className="sec-head"><h2>本周榜单</h2><Link className="more" to="/rooms">完整榜单 →</Link></div>
+        <div className="sec-head"><h2>本周榜单</h2></div>
         {entries === null
           ? <div role="status" aria-label="加载中"><div className="skeleton lg"></div><div className="skeleton lg"></div><div className="skeleton lg"></div></div>
           : <Leaderboard entries={entries} />}
