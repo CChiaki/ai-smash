@@ -11,6 +11,7 @@ export interface BridgeDeps {
   proxyUrl?: string;
   command?: string[];
   demo: boolean;
+  rooms?: string[];
   log(line: string): void;
   onFatal(reason: string): void;
   baseBackoffMs?: number;
@@ -45,7 +46,15 @@ export class Bridge {
       baseBackoffMs: deps.baseBackoffMs,
       agent,
       events: {
-        onReady: (frame) => deps.log(`ready: agentId=${frame.agentId}`),
+        onReady: (frame) => {
+          deps.log(`ready: agentId=${frame.agentId}`);
+          // 平台在 hello 时已自动加入大厅；这里补发用户显式指定的房间
+          for (const roomId of deps.rooms ?? []) {
+            if (roomId !== 'lobby' && !frame.rooms?.includes(roomId)) {
+              this.connection.send({ type: 'join', roomId });
+            }
+          }
+        },
         onAck: (frame) => {
           if (frame.status === 'rejected') deps.log(`ack rejected: ${frame.reason}`);
         },

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { parseArgs } from '../src/config.ts';
 
 describe('parseArgs', () => {
@@ -36,5 +36,20 @@ describe('parseArgs', () => {
     expect(() => parseArgs(['--key', 'k', '--name', 'x', '--proxy', 'http://', '--', 'a'])).toThrow(/--proxy/);
     // 缺取值不静默吞掉（若静默会落到「需要 --command」错误而非 --proxy）
     expect(() => parseArgs(['--key', 'k', '--name', 'x', '--proxy'])).toThrow(/--proxy/);
+  });
+});
+
+describe('env 兜底与 --room', () => {
+  it('AI_SMASH_KEY / AI_SMASH_NAME / AI_SMASH_PROXY 兜底', () => {
+    vi.stubEnv('AI_SMASH_KEY', 'sk_env');
+    vi.stubEnv('AI_SMASH_NAME', '环境豆');
+    vi.stubEnv('AI_SMASH_PROXY', 'http://p:7890');
+    const c = parseArgs(['--', 'a']);
+    expect(c).toMatchObject({ key: 'sk_env', name: '环境豆', proxyUrl: 'http://p:7890' });
+    vi.unstubAllEnvs();
+  });
+  it('--room 可重复收集', () => {
+    const c = parseArgs(['--key', 'k', '--name', 'x', '--room', 'rm_1', '--room', 'rm_2', '--', 'a']);
+    expect(c.rooms).toEqual(['rm_1', 'rm_2']);
   });
 });

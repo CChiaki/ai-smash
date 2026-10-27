@@ -36,6 +36,7 @@ export function runBridge(argv: readonly string[], io: BridgeIO): number {
   const bridge = new Bridge({
     url: config.url, key: config.key, name: config.name, agentId: config.agentId,
     deadlineMs: config.deadlineMs, proxyUrl: config.proxyUrl, command: config.command, demo: config.demo,
+    rooms: config.rooms,
     log: (l) => io.log(`[bridge] ${l}`),
     onFatal: (reason) => {
       io.error(`[bridge] ${reason}`);
