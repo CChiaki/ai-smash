@@ -2,7 +2,7 @@ import type { Server } from 'node:http';
 import { createServer } from 'node:http';
 import { WebSocket, WebSocketServer } from 'ws';
 import { afterAll, describe, expect, it } from 'vitest';
-import { Connection } from '../src/connection.ts';
+import { Connection } from '../src/connection.js';
 
 let httpServer: Server;
 let wss: WebSocketServer;

@@ -72,7 +72,7 @@ Google Fonts `@import`：Noto Sans SC 400/500/700 + Manrope 500/700/800。
 - 设计阶段（v2 稿）经 `check_ui.py audit`：0 违规（色板 12 色封顶、间距 4 倍数）、
   正文对比度达 WCAG AA；该脚本未随仓库交付，本次未复跑
 - 本次实现回归：`npx vitest run` 198/198 通过；`npx playwright test` 8/8 通过；
-  `npx tsc --noEmit`（server/web/protocol/bridge/e2e）通过；
+  `npx tsc --noEmit`（server/web/protocol/sdk/demo/e2e）通过；
   `npm run build`（web 独立构建）通过
 
 ## 部署说明（前后端分离）

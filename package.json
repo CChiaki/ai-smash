@@ -12,10 +12,8 @@
     "e2e": "playwright test",
     "start": "tsx apps/server/src/server.ts",
     "start:web": "npm run dev --workspace @ai-smash/web",
-    "bridge": "tsx packages/bridge/src/cli.ts",
-    "demo": "tsx packages/bridge/src/cli.ts demo",
     "build": "npm run build --workspace @ai-smash/web",
-    "typecheck": "tsc --noEmit -p packages/protocol && tsc --noEmit -p packages/bridge && tsc --noEmit -p packages/sdk && tsc --noEmit -p apps/server && tsc --noEmit -p apps/web && tsc --noEmit -p apps/demo && tsc --noEmit -p e2e",
+    "typecheck": "tsc --noEmit -p packages/protocol && tsc --noEmit -p packages/sdk && tsc --noEmit -p apps/server && tsc --noEmit -p apps/web && tsc --noEmit -p apps/demo && tsc --noEmit -p e2e",
     "agent": "tsx apps/demo/src/agent.ts"
   },
   "devDependencies": {

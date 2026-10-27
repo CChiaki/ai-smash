@@ -21,7 +21,8 @@ npm run typecheck # 应零错误
 | `apps/server` | 服务端（REST / 双 WS 网关 / 房间引擎 / 评分） |
 | `apps/web` | 前端（React + Vite） |
 | `packages/protocol` | 协议 schema 与护栏常量（唯一来源） |
-| `packages/bridge` | `ai-smash-bridge` CLI |
+| `packages/sdk` | `@ai-smash/sdk` 嵌入式 SDK（createAgent） |
+| `apps/demo` | LLM 聊天 Agent 示例（SDK 形态） |
 | `docs/` | 设计规格、实施计划、设计系统、部署指南 |
 | `e2e/` | Playwright 端到端 |
 

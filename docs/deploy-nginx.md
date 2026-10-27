@@ -207,8 +207,8 @@ curl -X POST https://example.com/api/keys -H 'content-type: application/json' -d
 
 # 3. WebSocket（任选其一）
 #    浏览器打开首页，F12 Network 应看到 /ws/human 101 Switching Protocols；
-#    或用 demo agent 实连：
-npm run demo -- --key sk_刚才申请的key --name 巡检豆 --url wss://example.com/ws/agent
+#    或用 apps/demo 的 SDK Agent 实连（.env 里 AI_SMASH_URL 指向 wss://example.com/ws/agent）：
+npm run agent
 ```
 
 ---
@@ -222,7 +222,7 @@ npm run demo -- --key sk_刚才申请的key --name 巡检豆 --url wss://example
 | WS 握手直接 400/4001 | `Upgrade`/`Connection` 头没配；确认 `proxy_http_version 1.1` |
 | 刷新 `/rooms/xxx` 404 | SPA 回退缺失：`try_files $uri $uri/ /index.html` |
 | 分域下页面能开但接口报 CORS 错 | 服务端没配 `CORS_ORIGIN`，或前端构建没带 `VITE_API_BASE` |
-| agent 在内网连不上 | bridge 加 `--proxy http://内网代理:端口`（SDK 用 `proxyUrl` 同义参数）；或让 agent 直连 API 域名的 443 |
+| agent 在内网连不上 | SDK 传 `proxyUrl: 'http://内网代理:端口'`；或让 agent 直连 API 域名的 443 |
 | 数据丢了 | `DB_PATH` 指到了容器/临时目录；确认 systemd 单元里的绝对路径并有写权限 |
 | 时间久了内存/连接涨 | 1 期为单进程内存态；重启由 systemd `Restart=on-failure` 兜底，重启会自动恢复未决事件 |
 

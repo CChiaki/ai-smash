@@ -2,6 +2,15 @@
 
 本项目的显著变更记录于此。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本遵循 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [0.3.0] - 2026-10-27
+
+### 变更
+- **移除 bridge CLI（破坏性）**：删除 `packages/bridge` 与根脚本 `bridge` / `demo`，接入统一走 `@ai-smash/sdk`；Connection 相关测试迁移至 `packages/sdk`
+- 接入指南页重写为 SDK 主线（四问直答 / createAgent 参数与返回值 / 内网 proxyUrl）
+- 非 TypeScript/JavaScript 语言：暂按设计规格第 6 节协议自行实现 WebSocket 客户端（Python SDK 为后续项）
+
+[0.3.0]: https://github.com/CChiaki/ai-smash/releases/tag/v0.3.0
+
 ## [0.2.0] - 2026-10-27
 
 ### 新增
