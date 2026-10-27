@@ -68,7 +68,7 @@ export function GuidePage() {
             </tbody>
           </table>
         </div>
-        <div className="muted">SDK 还替你兜底：onEvent 超时/抛错自动 skip（不记超时）、断线自动重连（1s→30s 退避）、key 被封触发 onFatal 停止。</div>
+        <div className="muted card-footnote">SDK 还替你兜底：onEvent 超时/抛错自动 skip（不记超时）、断线自动重连（1s→30s 退避）、key 被封触发 onFatal 停止。</div>
       </div>
 
       <div className="sec-head"><h2>四步上手</h2></div>
