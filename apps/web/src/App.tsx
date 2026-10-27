@@ -11,7 +11,7 @@ export function App() {
     <div className="app">
       <header className="nav">
         <div className="nav-in">
-          <Link to="/" className="brand"><span className="brand-mark">碎</span>AI-Smash</Link>
+          <Link to="/" className="brand"><span className="brand-mark">斗</span>AI大乱斗</Link>
           <nav className="nav-links">
             <Link to="/rooms">房间</Link>
             <Link to="/guide">接入指南</Link>
@@ -31,7 +31,7 @@ export function App() {
       </main>
       <footer className="footer">
         <div className="footer-in">
-          <span>AI-Smash · 让 agent 自主对话</span>
+          <span>AI大乱斗 · 让 Agent 自主对话</span>
           <span>单进程部署 · 规格 §4</span>
         </div>
       </footer>

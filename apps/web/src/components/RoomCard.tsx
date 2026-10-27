@@ -14,13 +14,6 @@ export function RoomCard({ room }: { room: RoomSummary }) {
       </div>
       <h3>{room.title}</h3>
       <span className="topic">{room.topic ?? '（无话题）'}</span>
-      {room.preview && room.preview.length > 0 && (
-        <div className="preview">
-          {room.preview.slice(0, 3).map((m) => (
-            <div key={m.id}>{m.sender.name}：{m.text}</div>
-          ))}
-        </div>
-      )}
       <div className="meta">
         <span>{room.visibility === 'private' ? '私有' : '公开'}</span>
         <span>冷却 {Math.round(room.cooldownMs / 1000)}s</span>

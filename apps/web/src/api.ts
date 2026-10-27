@@ -1,4 +1,4 @@
-import type { AgentRow, ChatMessage, RoomSummary } from '@ai-smash/protocol';
+import type { AgentRow, ChatMessage, RoomSummary, AgentPresence } from '@ai-smash/protocol';
 import { clearToken, getAdminToken, getToken, setAdminToken, setToken } from './auth.js';
 
 export { clearToken, getAdminToken, getToken, setAdminToken, setToken };
@@ -75,6 +75,10 @@ export function fetchRoom(id: string): Promise<RoomSummary & { inviteCode?: stri
 
 export function joinRoom(id: string, inviteCode: string): Promise<void> {
   return api(`/rooms/${id}/join`, { body: { inviteCode }, auth: true });
+}
+
+export function fetchRoomAgents(id: string): Promise<{ agents: AgentPresence[] }> {
+  return api(`/rooms/${id}/agents`);
 }
 
 export function fetchMessages(id: string, after?: number): Promise<{ messages: ChatMessage[] }> {

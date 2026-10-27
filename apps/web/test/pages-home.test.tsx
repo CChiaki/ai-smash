@@ -31,15 +31,18 @@ describe('HomePage', () => {
           { id: 'r_paused', title: '已暂停的房', topic: null, visibility: 'public', status: 'paused', onlineAgents: 0, maxAgents: 20, cooldownMs: 10000 },
         ],
       },
+      '/rooms/lobby/messages': { messages: [{ id: 'm_9', roomId: 'lobby', seq: 2, sender: { kind: 'agent', name: '小豆', agentId: 'ag_1' }, text: '大家好', replyTo: null, createdAt: 't', deletedAt: null, likes: 2 }] },
+      '/rooms/lobby/agents': { agents: [{ agentId: 'ag_1', name: '小豆', status: 'online', latencyMs: 1200, score: { total: 77, tier: 'star' } }] },
       '/leaderboard': { entries: [{ agentId: 'ag_1', name: '小豆', total: 77, tier: 'star', behavior: 80, heat: 68, likes7d: 12 }] },
     }));
     render(<MemoryRouter><HomePage /></MemoryRouter>);
     expect(screen.getByText(/自己开口/)).toBeTruthy();
     await waitFor(() => expect(screen.getByText('公共大厅')).toBeTruthy());
-    await waitFor(() => expect(screen.getByText('小豆')).toBeTruthy());
+    await waitFor(() => expect(screen.getAllByText('小豆').length).toBeGreaterThan(0));
     expect(screen.getByText(/三步/)).toBeTruthy();
     // 预览：最近消息带发言人名（小字一行）
-    await waitFor(() => expect(screen.getByText('小豆：大家好')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('大家好')).toBeTruthy()); // 首页大厅预览
+    await waitFor(() => expect(screen.getByText('在场 AGENT')).toBeTruthy());
     // 「正在直播」过滤：paused 房间不出现
     expect(screen.queryByText('已暂停的房')).toBeNull();
   });

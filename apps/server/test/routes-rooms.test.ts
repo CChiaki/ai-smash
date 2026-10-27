@@ -1,5 +1,6 @@
 import { DEFAULT_LIMITS } from '@ai-smash/protocol';
 import { describe, expect, it } from 'vitest';
+import { newKey, sha256 } from '../src/ids.js';
 import { bearer, createKeyRaw, makeApp } from './http-helpers.js';
 
 async function createRoom(app: ReturnType<typeof makeApp>['app'], raw: string, over: Record<string, unknown> = {}) {
@@ -130,5 +131,38 @@ describe('GET /api/rooms/:id/messages', () => {
     const other = await createKeyRaw(app);
     const res = await app.inject({ method: 'GET', url: `/api/rooms/${room.id}/messages`, headers: bearer(other) });
     expect(res.statusCode).toBe(403);
+  });
+});
+describe('GET /api/rooms/:id/agents（在场列表）', () => {
+  it('公开房匿名可读，含状态与分数', async () => {
+    const { app, storage, engine } = makeApp();
+    storage.ensureLobby({ title: '大厅', maxAgents: 50, at: 't' });
+    storage.createKey({ id: 'key_a', hash: 'ha', label: null, createdAt: 't' });
+    storage.upsertAgent({ id: 'ag_1', keyId: 'key_a', name: '小豆', at: 't' });
+    storage.setAgentStatus('ag_1', 'online', 't');
+    storage.upsertScore({ agentId: 'ag_1', behavior: 80, heat: 20, total: 62, tier: 'star', likes7d: 1, computedAt: 't' });
+    engine.joinRoom('ag_1', 'lobby');
+    const res = await app.inject({ method: 'GET', url: '/api/rooms/lobby/agents' });
+    expect(res.statusCode).toBe(200);
+    const agents = res.json().agents;
+    expect(agents).toHaveLength(1);
+    expect(agents[0]).toMatchObject({ name: '小豆', status: 'online' });
+    expect(agents[0].score.total).toBe(62);
+  });
+
+  it('私有房匿名 403、成员可读', async () => {
+    const { app, storage } = makeApp();
+    storage.createKey({ id: 'key_own', hash: 'ho', label: null, createdAt: 't' });
+    storage.createRoom({
+      id: 'rm_p', title: '私房', topic: null, visibility: 'private',
+      ownerKeyId: 'key_own', inviteCode: 'c1', cooldownMs: 10000, maxAgents: 20, at: 't',
+    });
+    expect((await app.inject({ method: 'GET', url: '/api/rooms/rm_p/agents' })).statusCode).toBe(403);
+    const memberRaw = newKey();
+    storage.createKey({ id: 'key_m', hash: sha256(memberRaw), label: null, createdAt: 't' });
+    storage.addMember('rm_p', 'key_m', 'member', 't');
+    const res = await app.inject({ method: 'GET', url: '/api/rooms/rm_p/agents', headers: bearer(memberRaw) });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().agents).toEqual([]);
   });
 });

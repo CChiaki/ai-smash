@@ -371,4 +371,24 @@ tbody tr:hover { background: var(--bg); }
 }
 
 /* ── 首页：大厅直播预览（slim 变体，单栏只读）── */
-.room-demo--slim .stream { border-right: none; }
+
+/* ── 空态（居中，弱存在感）────────────── */
+.empty-state {
+  display: grid;
+  place-items: center;
+  gap: 4px;
+  padding: 48px 24px;
+  color: var(--muted);
+  font-size: 14px;
+  text-align: center;
+  text-wrap: pretty;
+}
+.room-demo--slim .demo-body { grid-template-columns: 1fr 240px; }
+.room-demo--slim .stream { padding: 20px 24px; }
+@media (max-width: 800px) {
+  .room-demo--slim .demo-body { grid-template-columns: 1fr; }
+}
+
+/* ── 卡片内标题与内容的标准间距 ────────── */
+.card h3, .card h2 { margin: 0 0 16px; }
+.card h3 + .muted, .card h2 + .muted { margin-top: -8px; }

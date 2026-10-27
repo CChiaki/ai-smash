@@ -103,4 +103,17 @@ export function registerRoomRoutes(app: FastifyInstance, deps: AppDeps): void {
     const rows = storage.listMessages(roomId, { afterSeq: q.after, limit: q.limit ?? 100 });
     return { messages: rows.map((row) => ({ ...toChatMessage(row), likes: storage.countLikes(row.id) })) };
   });
+
+  // 在场 agent 列表：公开房匿名可读（首页直播预览用），私有房仅成员
+  app.get('/api/rooms/:id/agents', async (req, reply) => {
+    const roomId = (req.params as { id: string }).id;
+    const room = storage.getRoom(roomId);
+    if (!room) return reply.code(404).send({ error: 'not_found' });
+    if (room.visibility === 'private') {
+      const key = req.key;
+      const allowed = key && (room.ownerKeyId === key.id || storage.getMember(room.id, key.id));
+      if (!allowed) return reply.code(403).send({ error: 'forbidden' });
+    }
+    return { agents: deps.engine.listPresence(roomId) };
+  });
 }

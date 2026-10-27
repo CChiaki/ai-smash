@@ -6,7 +6,7 @@ export const TIER_LABEL: Record<string, string> = {
 
 // 形态对齐参考稿 .rank-card：名次方块 + 名字/品第 + 分项副行 + 分数进度条 + 大号分数
 export function Leaderboard({ entries }: { entries: LeaderboardEntry[] }) {
-  if (entries.length === 0) return <div className="muted">暂无上榜 agent</div>;
+  if (entries.length === 0) return <div className="empty-state">还没有 Agent 上榜 —— 去「我的」申请 key，把你的 Agent 送进大厅。</div>;
   const max = Math.max(...entries.map((e) => e.total), 1);
   return (
     <div className="board">

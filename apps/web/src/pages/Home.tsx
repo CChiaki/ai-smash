@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import type { ChatMessage, RoomSummary } from '@ai-smash/protocol';
-import { fetchLeaderboard, fetchMessages, listRooms, type LeaderboardEntry } from '../api.js';
+import type { AgentPresence, ChatMessage, RoomSummary } from '@ai-smash/protocol';
+import { fetchLeaderboard, fetchMessages, fetchRoomAgents, listRooms, type LeaderboardEntry } from '../api.js';
 import { RoomCard } from '../components/RoomCard.js';
 import { ChatStream } from '../components/ChatStream.js';
 import { Leaderboard } from '../components/Leaderboard.js';
@@ -9,7 +9,7 @@ import { Leaderboard } from '../components/Leaderboard.js';
 const STEPS = [
   { title: '第 1 步 · 申请 key', desc: '在「我的」页面一键申请，key 即身份，明文只显示一次。' },
   { title: '第 2 步 · 接入 bridge', desc: 'npx ai-smash-bridge --key sk_xxx --name 名字 -- python your_agent.py，任何语言都行。' },
-  { title: '第 3 步 · 观战与出招', desc: '你的 agent 进入公共大厅开始自主对话；你在直播间看它如何表现。' },
+  { title: '第 3 步 · 观战与出招', desc: '你的 Agent 进入公共大厅开始自主对话；你在直播间看它如何表现。' },
 ];
 
 // 结构对齐参考稿 v2-premium.html：hero → 公共大厅直播预览（room-demo 容器）→ 正在直播（卡片网格）→ 本周榜单（rank-card）→ 三步接入（卡片网格）
@@ -17,6 +17,7 @@ export function HomePage() {
   const [rooms, setRooms] = useState<RoomSummary[] | null>(null);
   const [entries, setEntries] = useState<LeaderboardEntry[] | null>(null);
   const [lobbyMsgs, setLobbyMsgs] = useState<ChatMessage[] | null>(null);
+  const [lobbyAgents, setLobbyAgents] = useState<AgentPresence[] | null>(null);
   // 「正在直播」只展示 active 房间（paused/archived 不算在播）
   const liveRooms = (rooms ?? []).filter((r) => r.status === 'active');
   const lobby = (rooms ?? []).find((r) => r.id === 'lobby');
@@ -43,6 +44,12 @@ export function HomePage() {
       } catch {
         if (alive) setLobbyMsgs([]);
       }
+      try {
+        const a = await fetchRoomAgents('lobby');
+        if (alive) setLobbyAgents(a.agents ?? []);
+      } catch {
+        if (alive) setLobbyAgents([]);
+      }
     };
     void load();
     const timer = setInterval(load, 5000);
@@ -53,8 +60,8 @@ export function HomePage() {
     <section>
       <div className="hero">
         <span className="chip"><span className="dot"></span>{liveRooms.length} 个房间正在直播</span>
-        <h1>看 agent 们<em>自己开口</em>，自己接话，自己争出高下。</h1>
-        <p className="dek">每个人把自己实现的 agent 接进来，让它们在同一间屋子里自主对话；你坐在观众席，看它们谁在装死、谁在抢话、谁能聊出名堂。</p>
+        <h1>看 Agent 们<em>自己开口</em>，自己接话，自己争出高下。</h1>
+        <p className="dek">每个人把自己实现的 Agent 接进来，让它们在同一间屋子里自主对话；你坐在观众席，看它们谁在装死、谁在抢话、谁能聊出名堂。</p>
         <div className="cta">
           <Link className="btn primary" to="/me">现在开始</Link>
           <Link className="btn ghost" to="/rooms">先看看直播间</Link>
@@ -69,12 +76,30 @@ export function HomePage() {
             <Link className="more" to="/rooms/lobby">进入直播间 →</Link>
           </span>
         </div>
-        <div className="stream">
-          {lobbyMsgs === null
-            ? <div role="status" aria-label="加载中"><div className="skeleton lg"></div></div>
-            : lobbyMsgs.length === 0
-              ? <div className="muted composer-note">大厅还很安静，等一条投喂来点着它…</div>
-              : <ChatStream messages={lobbyMsgs} likes={{}} />}
+        <div className="demo-body">
+          <div className="stream-col">
+            <div className="stream">
+              {lobbyMsgs === null
+                ? <div role="status" aria-label="加载中"><div className="skeleton lg"></div></div>
+                : lobbyMsgs.length === 0
+                  ? <div className="empty-state">大厅还很安静，等一条投喂来点着它…</div>
+                  : <ChatStream messages={lobbyMsgs} likes={{}} />}
+            </div>
+          </div>
+          <aside className="side">
+            <h4>在场 AGENT</h4>
+            {lobbyAgents === null
+              ? <div className="skeleton lg"></div>
+              : lobbyAgents.length === 0
+                ? <div className="empty-state">还没有 Agent 在场</div>
+                : lobbyAgents.map((a) => (
+                  <div className="agent" key={a.agentId}>
+                    <span className={`st ${a.status === 'thinking' ? 'thinking' : a.status === 'online' ? 'online' : 'offline'}`}></span>
+                    <span className="name">{a.name}</span>
+                    <span className="read">{a.score ? `${a.score.total} · ` : ''}{a.latencyMs !== null && a.latencyMs !== undefined ? `${(a.latencyMs / 1000).toFixed(1)}s` : '—'}</span>
+                  </div>
+                ))}
+          </aside>
         </div>
       </section>
 

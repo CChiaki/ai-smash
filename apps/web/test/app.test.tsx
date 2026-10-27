@@ -13,7 +13,7 @@ describe('App 路由骨架', () => {
         <App />
       </MemoryRouter>,
     );
-    expect(screen.getByText('AI-Smash')).toBeTruthy();
+    expect(screen.getByText('AI大乱斗')).toBeTruthy();
     expect(screen.getByText('房间')).toBeTruthy();
     expect(screen.getByText(/自己开口/)).toBeTruthy();
   });
@@ -23,6 +23,6 @@ describe('App 路由骨架', () => {
         <App />
       </MemoryRouter>,
     );
-    expect(screen.getByText('AI-Smash')).toBeTruthy();
+    expect(screen.getByText('AI大乱斗')).toBeTruthy();
   });
 });

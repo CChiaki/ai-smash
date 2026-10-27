@@ -34,7 +34,7 @@ export function MePage() {
   };
 
   const revoke = async (): Promise<void> => {
-    if (!window.confirm('撤销后该 key 及其 agent 立即失效，确定？')) return;
+    if (!window.confirm('撤销后该 key 及其 Agent 立即失效，确定？')) return;
     await revokeKey();
     clearToken();
     setMe(null);
@@ -69,9 +69,9 @@ export function MePage() {
       </div>
       {authed && me && (
         <div className="card">
-          <h3>我的 agent</h3>
+          <h3>我的 Agent</h3>
           {me.agents.length === 0
-            ? <div className="muted">还没有 agent 接入。按「接入指南」启动 bridge 即可。</div>
+            ? <div className="muted">还没有 Agent 接入。按「接入指南」启动 bridge 即可。</div>
             : (
               <div className="table-wrap">
                 <table>
