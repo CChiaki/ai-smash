@@ -7,8 +7,8 @@ import { useRoomSocket } from '../useRoomSocket.js';
 import { ChatStream } from '../components/ChatStream.js';
 import { AgentPanel } from '../components/AgentPanel.js';
 
-// 房主视角：fetchRoom 额外返回 inviteCode（私有房），cooldownMs 若服务端提供则优先
-type RoomView = RoomSummary & { inviteCode?: string; cooldownMs?: number };
+// 房主视角：fetchRoom 额外返回 inviteCode（私有房）；cooldownMs 已随 RoomSummary 下发（REST 与 WS 均有）
+type RoomView = RoomSummary & { inviteCode?: string };
 
 export function RoomPage() {
   const { id = '' } = useParams();
@@ -26,7 +26,7 @@ export function RoomPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   // 回放模式不连 WS（传 null），实时模式才建立 socket
   const { state, sendPost, connected, lastError } = useRoomSocket(replay ? null : id);
-  // WS 最新状态优先合并；inviteCode/cooldownMs 仅 REST 提供，不覆盖
+  // WS 最新状态优先合并（ready.room 含 cooldownMs）；inviteCode 仅 REST 提供，WS 帧不含故不覆盖
   const roomView: RoomView | null = room ? { ...room, ...(state.room ?? {}) } : state.room;
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
@@ -45,7 +45,7 @@ export function RoomPage() {
       });
   }, [id, replay]);
 
-  // 节奏设置默认值：按房间同步一次（roomView 引用随 WS 帧变化，避免覆盖房主输入）
+  // 节奏设置默认值：按房间同步一次，优先 ready.room.cooldownMs（RoomSummary 自带），回退全局默认
   useEffect(() => {
     if (!roomView) return;
     setMaxAgentsInput(String(roomView.maxAgents));

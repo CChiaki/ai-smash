@@ -10,5 +10,6 @@ export function roomSummary(storage: Storage, room: RoomRow): RoomSummary {
     status: room.status,
     onlineAgents: storage.countRoomAgents(room.id, 'active'),
     maxAgents: room.maxAgents,
+    cooldownMs: room.cooldownMs,
   };
 }

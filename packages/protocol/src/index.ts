@@ -32,6 +32,7 @@ export const RoomSummarySchema = z.object({
   status: z.enum(['active', 'paused', 'archived']),
   onlineAgents: z.number().int(),
   maxAgents: z.number().int(),
+  cooldownMs: z.number().int(),
 });
 export type RoomSummary = z.infer<typeof RoomSummarySchema>;
 

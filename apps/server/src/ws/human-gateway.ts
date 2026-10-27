@@ -58,6 +58,14 @@ export class HumanGateway {
     return n;
   }
 
+  // 规格 18 shutdown 顺序：先对所有观测 WS 发 1001，清空注册表后再关 DB
+  closeAll(): void {
+    for (const set of this.rooms.values()) {
+      for (const ws of set) { try { ws.close(1001, 'server_shutdown'); } catch { /* 忽略 */ } }
+    }
+    this.rooms.clear();
+  }
+
   private broadcast(roomId: string, frame: unknown): void {
     for (const ws of this.rooms.get(roomId) ?? []) {
       if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(frame));

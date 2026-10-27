@@ -34,6 +34,10 @@ export function composeServer(config: Config, provided?: SqliteStorage): ServerH
   return {
     app, storage, engine, bus, agentGateway, humanGateway,
     close: async () => {
+      // 规格 18 shutdown 顺序：先关 WS（1001）排空在途回调，再关 HTTP，最后关 DB
+      agentGateway.closeAll();
+      humanGateway.closeAll();
+      await new Promise((r) => setTimeout(r, 30)); // 给 close 回调排空，避免写库撞已关闭 DB
       await app.close();
       storage.close();
     },

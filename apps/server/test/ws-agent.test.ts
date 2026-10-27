@@ -103,6 +103,25 @@ describe('agent gateway', () => {
     c.ws.terminate();
   });
 
+  it('房间暂停/恢复 → agent 收到 state 帧 roomStatus（规格 6.4/18）', async () => {
+    const { handle, url } = await start();
+    const raw = newKey();
+    handle.storage.createKey({ id: 'key_pause', hash: sha256(raw), label: null, createdAt: 't' });
+    const c = await connect(url);
+    send(c.ws, { type: 'hello', protocol: 1, key: raw, agent: { name: '暂停豆' } });
+    const ready = await next(c.frames, 'ready');
+    await next(c.frames, 'joined'); // 已进大厅
+    handle.engine.pauseRoom('lobby');
+    const paused = await next(c.frames, 'state');
+    expect(paused.roomStatus).toBe('paused');
+    expect(paused.roomId).toBe('lobby');
+    expect(paused.agentId).toBe(ready.agentId);
+    handle.engine.resumeRoom('lobby');
+    const resumed = await next(c.frames, 'state');
+    expect(resumed.roomStatus).toBe('active');
+    c.ws.terminate();
+  });
+
   it('forceDisconnect 关闭 4003 且标记 offline', async () => {
     const { handle, url } = await start();
     const raw = newKey();

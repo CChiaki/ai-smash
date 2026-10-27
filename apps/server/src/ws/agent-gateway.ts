@@ -33,6 +33,18 @@ export class AgentGateway {
         });
       }
     });
+    // 规格 6.4/18：房间暂停/恢复等变化，实时推 state 帧让 agent 感知 roomStatus
+    deps.bus.on(Topics.roomUpdate, (p: any) => {
+      const room = this.deps.storage.getRoom(p.room.id);
+      if (!room) return;
+      for (const ra of this.deps.storage.listRoomAgents(room.id)) {
+        if (ra.status !== 'active') continue;
+        const ws = this.sockets.get(ra.agentId);
+        if (ws?.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'state', agentId: ra.agentId, roomId: room.id, roomStatus: room.status }));
+        }
+      }
+    });
   }
 
   handleUpgrade(req: IncomingMessageLike, socket: Duplex, head: Buffer): void {
@@ -60,6 +72,14 @@ export class AgentGateway {
 
   onlineCount(): number {
     return this.sockets.size;
+  }
+
+  // 规格 18 shutdown 顺序：先对所有 agent WS 发 1001，清空注册表后再关 DB
+  closeAll(): void {
+    for (const ws of this.sockets.values()) {
+      try { ws.close(1001, 'server_shutdown'); } catch { /* 忽略 */ }
+    }
+    this.sockets.clear();
   }
 
   private send(ws: WebSocket, frame: unknown): void {

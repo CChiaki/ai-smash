@@ -8,7 +8,7 @@ function msg(seq: number, text: string): ChatMessage {
 
 describe('roomReducer', () => {
   it('ready 载入房间/历史/在场，并记录 you（身份/房主）', () => {
-    const room = { id: 'lobby', title: '大厅', topic: null, visibility: 'public' as const, status: 'active' as const, onlineAgents: 1, maxAgents: 50 };
+    const room = { id: 'lobby', title: '大厅', topic: null, visibility: 'public' as const, status: 'active' as const, onlineAgents: 1, maxAgents: 50, cooldownMs: 10000 };
     const next = roomReducer(initialRoomState, { type: 'ready', room, messages: [msg(1, 'a')], agents: [], you: { keyId: 'k_1', name: '阿伟', isOwner: true } });
     expect(next.ready).toBe(true);
     expect(next.room?.id).toBe('lobby');

@@ -48,7 +48,7 @@ class RoomFakeWS {
 
 const ownerReadyFrame = {
   type: 'ready',
-  room: { id: 'r1', title: '测试房', topic: null, visibility: 'public', status: 'active', onlineAgents: 1, maxAgents: 20 },
+  room: { id: 'r1', title: '测试房', topic: null, visibility: 'public', status: 'active', onlineAgents: 1, maxAgents: 20, cooldownMs: 10000 },
   messages: [],
   agents: [],
   you: { keyId: 'k1', name: '房主', isOwner: true },
@@ -58,7 +58,7 @@ describe('RoomPage', () => {
   function stubRest() {
     return vi.fn(async (url: string, init?: any) => {
       if (url === '/api/rooms/r1') {
-        return new Response(JSON.stringify({ id: 'r1', title: '测试房', topic: null, visibility: 'public', status: 'active', onlineAgents: 1, maxAgents: 20 }), { status: 200, headers: { 'content-type': 'application/json' } });
+        return new Response(JSON.stringify({ id: 'r1', title: '测试房', topic: null, visibility: 'public', status: 'active', onlineAgents: 1, maxAgents: 20, cooldownMs: 10000 }), { status: 200, headers: { 'content-type': 'application/json' } });
       }
       if (url.startsWith('/api/rooms/r1/messages')) {
         return new Response(JSON.stringify({ messages: [humanMsg, agentMsg] }), { status: 200, headers: { 'content-type': 'application/json' } });
@@ -106,7 +106,7 @@ describe('RoomPage', () => {
       ws.open();
       ws.receive({
         type: 'ready',
-        room: { id: 'r1', title: '测试房', topic: null, visibility: 'public', status: 'active', onlineAgents: 1, maxAgents: 20 },
+        room: { id: 'r1', title: '测试房', topic: null, visibility: 'public', status: 'active', onlineAgents: 1, maxAgents: 20, cooldownMs: 10000 },
         messages: [],
         agents: [],
         you: { keyId: 'k1', name: '房主', isOwner: true },
@@ -154,7 +154,7 @@ describe('RoomPage', () => {
       ws.open();
       ws.receive({
         type: 'ready',
-        room: { id: 'r1', title: '测试房', topic: null, visibility: 'private', status: 'active', onlineAgents: 1, maxAgents: 20 },
+        room: { id: 'r1', title: '测试房', topic: null, visibility: 'private', status: 'active', onlineAgents: 1, maxAgents: 20, cooldownMs: 10000 },
         messages: [],
         agents: [],
         you: { keyId: 'k1', name: '房主', isOwner: true },
