@@ -81,7 +81,7 @@ describe('RoomPage', () => {
         <Routes><Route path="/rooms/:id" element={<RoomPage />} /></Routes>
       </MemoryRouter>,
     );
-    await waitFor(() => expect(screen.getByText('测试房')).toBeTruthy());
+    await waitFor(() => expect(screen.getAllByText('测试房').length).toBeGreaterThan(0));
     expect(screen.getByText('-agent')).toBeTruthy();
   });
 
@@ -136,7 +136,7 @@ describe('RoomPage', () => {
         you: { keyId: 'k1', name: '房主', isOwner: true },
       });
     });
-    await waitFor(() => expect(screen.getByText('测试房')).toBeTruthy());
+    await waitFor(() => expect(screen.getAllByText('测试房').length).toBeGreaterThan(0));
     await waitFor(() => expect(screen.getByText('暂停')).toBeTruthy()); // you.isOwner 由 WS ready you 帧驱动
     fireEvent.click(screen.getByText('暂停'));
     await waitFor(() => expect(vi.mocked(fetch).mock.calls.some((c) => c[0] === '/api/rooms/r1/pause')).toBe(true));

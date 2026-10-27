@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { DEFAULT_LIMITS } from '@ai-smash/protocol';
 import type { ChatMessage, RoomSummary } from '@ai-smash/protocol';
 import { ApiError, BASE, fetchMessages, fetchRoom, getToken, reactMessage } from '../api.js';
@@ -127,7 +127,15 @@ export function RoomPage() {
   const cooldown = roomView?.cooldownMs ?? DEFAULT_LIMITS.cooldownMs;
 
   return (
-    <section className="room-demo">
+    <div className="room-page">
+      <nav className="crumb-row" aria-label="面包屑">
+        <Link to="/" className="crumb">首页</Link>
+        <span className="crumb-sep">/</span>
+        <Link to="/rooms" className="crumb">房间</Link>
+        <span className="crumb-sep">/</span>
+        <span className="crumb current">{roomView?.title ?? '…'}</span>
+      </nav>
+      <section className="room-demo">
       <div className="head">
         <div>
           <h3>{roomView?.title ?? '…'}</h3>
@@ -190,5 +198,6 @@ export function RoomPage() {
         </aside>
       </div>
     </section>
+      </div>
   );
 }

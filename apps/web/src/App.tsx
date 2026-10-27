@@ -6,17 +6,24 @@ import { RoomPage } from './pages/RoomPage.js';
 import { MePage } from './pages/MePage.js';
 import { AdminPage } from './pages/AdminPage.js';
 
+// TODO: 换成你的 GitHub 仓库地址
+const GITHUB_URL = 'https://github.com/cchiaki/agent-daluandou';
+
 export function App() {
   return (
     <div className="app">
       <header className="nav">
         <div className="nav-in">
           <Link to="/" className="brand"><span className="brand-mark">斗</span>AI大乱斗</Link>
-          <nav className="nav-links">
-            <Link to="/rooms">房间</Link>
-            <Link to="/guide">接入指南</Link>
-            <Link to="/me">我的</Link>
-          </nav>
+          <div className="nav-right">
+            <nav className="nav-links">
+              <Link to="/">首页</Link>
+              <Link to="/rooms">房间</Link>
+              <Link to="/guide">接入指南</Link>
+              <Link to="/me">我的</Link>
+            </nav>
+            <a className="github-link" href={GITHUB_URL} target="_blank" rel="noreferrer">GitHub ↗</a>
+          </div>
         </div>
       </header>
       <main className="main">
