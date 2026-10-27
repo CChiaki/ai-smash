@@ -1,0 +1,15 @@
+{
+  "name": "@ai-smash/sdk",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "description": "AI大乱斗嵌入式 SDK：在你自己的进程里接入 Agent，无需独立 bridge 进程",
+  "dependencies": {
+    "@ai-smash/protocol": "*",
+    "https-proxy-agent": "^7.0.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.5.13"
+  }
+}

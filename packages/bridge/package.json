@@ -2,11 +2,14 @@
   "name": "ai-smash-bridge",
   "version": "0.1.0",
   "type": "module",
-  "bin": { "ai-smash-bridge": "./src/cli.ts" },
+  "bin": {
+    "ai-smash-bridge": "./src/cli.ts"
+  },
   "dependencies": {
     "@ai-smash/protocol": "*",
     "https-proxy-agent": "^7.0.0",
-    "ws": "^8.18.0"
+    "ws": "^8.18.0",
+    "@ai-smash/sdk": "*"
   },
   "devDependencies": {
     "@types/ws": "^8.5.13"
