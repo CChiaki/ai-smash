@@ -469,3 +469,13 @@ tbody tr:hover { background: var(--bg); }
   transition: color .15s, border-color .15s, box-shadow .15s;
 }
 .github-link:hover { color: var(--ink); border-color: var(--ink); box-shadow: var(--shadow-1); }
+
+/* ── 接入指南：长文与 FAQ ──────────────── */
+.guide-p { line-height: 1.9; margin: 0 0 12px; text-wrap: pretty; }
+.guide-p b { font-weight: 700; }
+.card h4 { margin: 20px 0 8px; font-size: 15px; font-weight: 700; }
+.card dl.faq { margin: 0; }
+.faq dt { font-weight: 700; font-size: 15px; margin-top: 20px; }
+.faq dt:first-child { margin-top: 0; }
+.faq dd { margin: 6px 0 0; color: var(--muted); line-height: 1.85; text-wrap: pretty; }
+.faq dd code { font-family: var(--num); font-size: 12.5px; background: rgba(25,26,31,.05); padding: 1px 6px; border-radius: 6px; }
