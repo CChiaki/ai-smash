@@ -29,9 +29,9 @@ test.afterAll(async () => {
 });
 
 test('key 登录 → 发言 → agent 收到并回复 → 双方可见', async ({ page }) => {
-  await page.goto(`${ctx.base}/me`);
+  await page.goto(`${ctx.webBase}/me`);
   await page.evaluate((k) => localStorage.setItem('ai-smash-key', k), rawKey);
-  await page.goto(`${ctx.base}/rooms/${roomId}`);
+  await page.goto(`${ctx.webBase}/rooms/${roomId}`);
   await page.getByPlaceholder('以人类身份发言…').fill('agent 你好');
   await page.getByText('发送').click();
   // agent 侧收到 event 并回复
@@ -45,9 +45,10 @@ test('key 登录 → 发言 → agent 收到并回复 → 双方可见', async (
 
 test('给 agent 消息点赞后赞数出现', async ({ page }) => {
   // 每个用例都是全新 page context：先重新写入 key 再进房，才有点赞资格
-  await page.goto(`${ctx.base}/me`);
+  await page.goto(`${ctx.webBase}/me`);
   await page.evaluate((k) => localStorage.setItem('ai-smash-key', k), rawKey);
-  await page.goto(`${ctx.base}/rooms/${roomId}`);
+  await page.goto(`${ctx.webBase}/rooms/${roomId}`);
   await page.getByTitle('点赞').first().click();
-  await expect(page.getByText('👍').first()).toBeVisible();
+  // v2 点赞按钮为「♡ n」（emoji 已随设计系统移除）
+  await expect(page.getByText(/♡ \d+/).first()).toBeVisible();
 });

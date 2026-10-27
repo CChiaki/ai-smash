@@ -1,25 +1,64 @@
+import { spawn } from 'node:child_process';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { WebSocket } from 'ws';
 import { boot, type BootHandle } from '../apps/server/src/server.js';
 
+const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+
 export interface ServerCtx {
   base: string;
+  webBase: string;
   handle: BootHandle;
   shutdown(): Promise<void>;
+}
+
+// 起独立 vite dev server（web 前后端分离部署形态）：API/WS 跨源，服务端以 CORS_ORIGIN 放行
+// 注：cwd 用 apps/web —— vite 的 root 取 process.cwd()，从仓库根起会 404（站根解析不到 apps/web/index.html）
+async function startVite(apiBase: string): Promise<{ child: ReturnType<typeof spawn>; webBase: string }> {
+  const webDir = join(REPO_ROOT, 'apps', 'web');
+  const viteBin = join(REPO_ROOT, 'node_modules', '.bin', 'vite');
+  const child = spawn(viteBin, ['--config', join(webDir, 'vite.config.ts'), '--port', '0', '--strictPort', 'false'], {
+    cwd: webDir,
+    env: { ...process.env, VITE_API_BASE: apiBase, ADMIN_TOKEN: 'e2e-admin-token' },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  let out = '';
+  child.stdout!.on('data', (d: Buffer) => { out += String(d); });
+  child.stderr!.on('data', (d: Buffer) => { out += String(d); });
+
+  // vite 输出带 ANSI 色码（Local: http://localhost:\x1b[1m5174…），先剥离再解析端口
+  const plain = (): string => out.replace(/\x1b\[[0-9;]*m/g, '');
+  const deadline = Date.now() + 30_000;
+  while (Date.now() < deadline) {
+    const m = plain().match(/http:\/\/localhost:(\d+)\//);
+    if (m) {
+      const webBase = `http://localhost:${m[1]}`;
+      try {
+        const res = await fetch(webBase);
+        if (res.ok) return { child, webBase };
+      } catch { /* vite 未就绪，继续轮询 */ }
+    }
+    await new Promise((r) => setTimeout(r, 200));
+  }
+  child.kill();
+  throw new Error(`vite dev server 未在 30s 内就绪，输出：\n${out}`);
 }
 
 export async function startServer(): Promise<ServerCtx> {
   process.env.ADMIN_TOKEN ??= 'e2e-admin-token';
   const dir = mkdtempSync(join(tmpdir(), 'aismash-e2e-'));
-  const handle = await boot({ dbPath: join(dir, 'e2e.db'), port: 0 });
+  const handle = await boot({ dbPath: join(dir, 'e2e.db'), port: 0, corsOrigin: '*' });
   const port = (handle.app.server.address() as any).port;
   const base = `http://127.0.0.1:${port}`;
   await fetch(`${base}/healthz`).then((r) => r.json());
+  const { child, webBase } = await startVite(base);
   return {
-    base, handle,
+    base, webBase, handle,
     shutdown: async () => {
+      child.kill();
       await handle.shutdown();
     },
   };

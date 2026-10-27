@@ -18,8 +18,8 @@ export function useRoomSocket(roomId: string | null) {
     setLastError(null);
     dispatch({ type: 'reset' });
     const connect = (): void => {
-      const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const ws = new WebSocket(`${proto}//${location.host}/ws/human`);
+      const base = (import.meta as any).env?.VITE_API_BASE || location.origin;
+      const ws = new WebSocket(base.replace(/^http/, 'ws') + '/ws/human');
       wsRef.current = ws;
       ws.onopen = () => {
         setConnected(true);

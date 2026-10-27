@@ -3,6 +3,9 @@ import { clearToken, getAdminToken, getToken, setAdminToken, setToken } from './
 
 export { clearToken, getAdminToken, getToken, setAdminToken, setToken };
 
+// 前后端分离部署：web 独立构建时以 VITE_API_BASE 指向 API 源（空串 = 同源）
+export const BASE: string = (import.meta as any).env?.VITE_API_BASE ?? '';
+
 export interface MeInfo {
   key: { id: string; label: string | null; createdAt: string };
   agents: AgentRow[];
@@ -32,7 +35,7 @@ export async function api<T>(path: string, opts: ApiOpts = {}): Promise<T> {
   if (opts.body !== undefined) headers['content-type'] = 'application/json';
   if (opts.auth && getToken()) headers.authorization = `Bearer ${getToken()}`;
   if (opts.admin) headers['x-admin-token'] = getAdminToken();
-  const res = await fetch(`/api${path}`, {
+  const res = await fetch(`${BASE}/api${path}`, {
     method: opts.method ?? (opts.body !== undefined ? 'POST' : 'GET'),
     headers,
     body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,

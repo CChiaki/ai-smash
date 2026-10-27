@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
@@ -17,12 +17,12 @@ afterAll(async () => {
 
 const booted: Array<{ shutdown: () => Promise<void> }> = [];
 
-async function start() {
+async function start(over: Record<string, unknown> = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'aismash-'));
   dirs.push(dir);
   const dbPath = join(dir, 'data', 'test.db');
   mkdirSync(join(dir, 'data'), { recursive: true });
-  const h = await boot({ ...testConfig(), dbPath, port: 0 });
+  const h = await boot({ ...testConfig(), dbPath, port: 0, ...over });
   booted.push(h);
   const port = (h.app.server.address() as any).port;
   return { h, base: `http://127.0.0.1:${port}` };
@@ -43,22 +43,19 @@ describe('boot（server.ts 组装）', () => {
     expect(second.storage.getEvent('ev_pending')?.status).toBe('timeout');
   });
 
-  it('存在 apps/web/dist 时 SPA 回退，API 路径不回退', async () => {
-    const distDir = 'apps/web/dist';
-    const hadRealDist = existsSync(join(distDir, 'index.html'));
-    if (!hadRealDist) {
-      mkdirSync(distDir, { recursive: true });
-      writeFileSync(join(distDir, 'index.html'), '<html>spa</html>');
-    }
-    try {
-      const { h, base } = await start();
-      const res = await fetch(`${base}/some/spa/route`);
-      expect(await res.text()).toContain('<'); // 真实 dist 或临时 dist 都以 <html 开头
-      const api = await fetch(`${base}/api/nothing`);
-      expect(api.status).toBe(404);
-      await h.shutdown();
-    } finally {
-      if (!hadRealDist) rmSync(distDir, { recursive: true, force: true });
-    }
+  it('配置 corsOrigin 后 API 带跨源头，OPTIONS 预检 204；未配置则不带', async () => {
+    const { h, base } = await start({ corsOrigin: 'https://web.example' });
+    const res = await fetch(`${base}/api/rooms?visibility=public`, { headers: { origin: 'https://web.example' } });
+    expect(res.headers.get('access-control-allow-origin')).toBe('https://web.example');
+    const pre = await fetch(`${base}/api/rooms`, { method: 'OPTIONS' });
+    expect(pre.status).toBe(204);
+    expect(pre.headers.get('access-control-allow-methods')).toContain('PATCH');
+    expect(pre.headers.get('access-control-allow-headers')).toContain('x-admin-token');
+    await h.shutdown();
+
+    const plain = await start();
+    const res2 = await fetch(`${plain.base}/api/rooms?visibility=public`);
+    expect(res2.headers.get('access-control-allow-origin')).toBeNull();
+    await plain.h.shutdown();
   });
 });

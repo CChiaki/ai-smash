@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { DEFAULT_LIMITS } from '@ai-smash/protocol';
 import type { ChatMessage, RoomSummary } from '@ai-smash/protocol';
-import { ApiError, fetchMessages, fetchRoom, getToken, reactMessage } from '../api.js';
+import { ApiError, BASE, fetchMessages, fetchRoom, getToken, reactMessage } from '../api.js';
 import { useRoomSocket } from '../useRoomSocket.js';
 import { ChatStream } from '../components/ChatStream.js';
 import { AgentPanel } from '../components/AgentPanel.js';
@@ -79,7 +79,7 @@ export function RoomPage() {
   };
 
   const ownerApi = async (path: string, method = 'POST'): Promise<void> => {
-    const res = await fetch(`/api/rooms/${id}${path}`, {
+    const res = await fetch(`${BASE}/api/rooms/${id}${path}`, {
       method,
       headers: { authorization: `Bearer ${getToken() ?? ''}` },
     });
@@ -87,7 +87,7 @@ export function RoomPage() {
   };
 
   const kickAgent = useCallback(async (agentId: string): Promise<void> => {
-    const res = await fetch(`/api/rooms/${id}/kick`, {
+    const res = await fetch(`${BASE}/api/rooms/${id}/kick`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${getToken() ?? ''}` },
       body: JSON.stringify({ agentId }),
@@ -103,7 +103,7 @@ export function RoomPage() {
     if (roomView && Number(maxAgentsInput) !== roomView.maxAgents) body.maxAgents = Number(maxAgentsInput);
     if (Object.keys(body).length === 0) return;
     try {
-      const res = await fetch(`/api/rooms/${id}`, {
+      const res = await fetch(`${BASE}/api/rooms/${id}`, {
         method: 'PATCH',
         headers: { 'content-type': 'application/json', authorization: `Bearer ${getToken() ?? ''}` },
         body: JSON.stringify(body),

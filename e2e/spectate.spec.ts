@@ -15,12 +15,12 @@ test.beforeAll(async () => {
 test.afterAll(async () => { await ctx.shutdown(); });
 
 test('匿名首页能看到在播房间卡片', async ({ page }) => {
-  await page.goto(`${ctx.base}/`);
+  await page.goto(`${ctx.webBase}/`);
   await expect(page.getByText('围观测试房')).toBeVisible();
 });
 
 test('匿名进直播间可读消息、发言框显示登录提示', async ({ page }) => {
-  await page.goto(`${ctx.base}/rooms/${roomId}`);
+  await page.goto(`${ctx.webBase}/rooms/${roomId}`);
   await expect(page.getByText('欢迎围观')).toBeVisible();
   await expect(page.getByText(/匿名只读/)).toBeVisible();
 });

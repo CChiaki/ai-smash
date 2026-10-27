@@ -19,7 +19,7 @@ test.afterAll(async () => {
 });
 
 test('管理端登录 → 概览 → 封禁 key → agent 断线', async ({ page }) => {
-  await page.goto(`${ctx.base}/admin`);
+  await page.goto(`${ctx.webBase}/admin`);
   await page.getByPlaceholder('ADMIN_TOKEN').fill('e2e-admin-token');
   await page.getByText('进入').click();
   // keys 文案同时出现在概览卡片和 tab，用 tab 按钮定位避免 strict mode 冲突

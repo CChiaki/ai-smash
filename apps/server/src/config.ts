@@ -7,6 +7,7 @@ const ConfigSchema = z.object({
   PUBLIC_BASE_URL: z.string().optional(),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'silent']).default('info'),
   TRUST_PROXY: z.enum(['true', 'false']).default('false').transform((v) => v === 'true'),
+  CORS_ORIGIN: z.string().optional(),
 });
 
 export type Config = {
@@ -16,6 +17,7 @@ export type Config = {
   publicBaseUrl?: string;
   logLevel: 'fatal' | 'error' | 'warn' | 'info' | 'debug' | 'silent';
   trustProxy: boolean;
+  corsOrigin?: string;
 };
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -27,5 +29,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     publicBaseUrl: parsed.PUBLIC_BASE_URL,
     logLevel: parsed.LOG_LEVEL,
     trustProxy: parsed.TRUST_PROXY,
+    corsOrigin: parsed.CORS_ORIGIN,
   };
 }

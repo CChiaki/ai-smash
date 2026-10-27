@@ -1,8 +1,5 @@
 import Fastify, { type FastifyInstance } from 'fastify';
-import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { ZodError } from 'zod';
-import fastifyStatic from '@fastify/static';
 import type { Bus } from './bus.js';
 import type { RoomEngine } from './engine/room.js';
 import type { KeyRow, Storage } from './storage/types.js';
@@ -40,7 +37,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
     app.log.error(err);
     return reply.code(500).send({ error: 'internal' });
   });
-  // CSP：页面同源自给，组件内联 style 放行，WS 跨 scheme 放行；全局 onSend 保证静态页也带上。
+  // CSP：API 无页面自给；组件内联 style 放行，WS 跨 scheme 放行。
   const CSP = [
     "default-src 'self'",
     "script-src 'self'",
@@ -52,12 +49,13 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   app.addHook('onSend', async (_req, reply) => {
     reply.header('Content-Security-Policy', CSP);
   });
+  // 前后端分离部署：web 独立构建，跨源访问 API/WS 时以 CORS_ORIGIN 放行。
+  registerCors(app, deps);
   registerKeyRoutes(app, deps);
   registerRoomRoutes(app, deps);
   registerSocialRoutes(app, deps);
   registerAdminRoutes(app, deps);
   registerOwnerRoutes(app, deps);
-  registerStatic(app);
   app.get('/healthz', async () => ({ ok: true }));
   return app;
 }
@@ -71,14 +69,19 @@ declare module 'fastify' {
   }
 }
 
-function registerStatic(app: FastifyInstance): void {
-  const distDir = join(process.cwd(), 'apps', 'web', 'dist');
-  if (!existsSync(distDir)) return;
-  void app.register(fastifyStatic, { root: distDir });
-  app.setNotFoundHandler((req, reply) => {
-    if (req.url.startsWith('/api') || req.url.startsWith('/ws')) {
-      return reply.code(404).send({ error: 'not_found' });
+function registerCors(app: FastifyInstance, deps: AppDeps): void {
+  const origin = deps.config.corsOrigin;
+  if (!origin) return;
+  const CORS_METHODS = 'GET,POST,PATCH,DELETE,OPTIONS';
+  const CORS_HEADERS = 'content-type,authorization,x-admin-token';
+  app.addHook('onRequest', async (req, reply) => {
+    const url = req.url;
+    if (!url.startsWith('/api') && !url.startsWith('/ws')) return;
+    reply.header('access-control-allow-origin', origin);
+    if (req.method === 'OPTIONS') {
+      reply.header('access-control-allow-methods', CORS_METHODS);
+      reply.header('access-control-allow-headers', CORS_HEADERS);
+      return reply.code(204).send();
     }
-    return reply.type('text/html').send(readFileSync(join(distDir, 'index.html')));
   });
 }

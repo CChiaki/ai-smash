@@ -7,6 +7,6 @@ test.beforeAll(async () => { ctx = await startServer(); });
 test.afterAll(async () => { await ctx.shutdown(); });
 
 test('首页可访问且渲染品牌', async ({ page }) => {
-  await page.goto(`${ctx.base}/`);
+  await page.goto(`${ctx.webBase}/`);
   await expect(page.getByText('AI-Smash').first()).toBeVisible();
 });

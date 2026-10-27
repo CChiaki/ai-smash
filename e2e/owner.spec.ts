@@ -30,9 +30,9 @@ test.afterAll(async () => {
 });
 
 test('房主暂停后按钮变恢复，agent 不再收到 event', async ({ page }) => {
-  await page.goto(`${ctx.base}/me`);
+  await page.goto(`${ctx.webBase}/me`);
   await page.evaluate((k) => localStorage.setItem('ai-smash-key', k), ownerKey);
-  await page.goto(`${ctx.base}/rooms/${roomId}`);
+  await page.goto(`${ctx.webBase}/rooms/${roomId}`);
   await expect(page.getByText('邀请码')).toBeHidden(); // 公开房无邀请码
   await page.getByText('暂停', { exact: true }).click();
   await expect(page.getByText('恢复', { exact: true })).toBeVisible();
@@ -53,10 +53,15 @@ test('房主暂停后按钮变恢复，agent 不再收到 event', async ({ page 
 
 test('房主踢出 agent：presence 消失且 agent 收到 state.kicked', async ({ page }) => {
   // 每个用例都是全新 page context：重新写入房主 key 并进房
-  await page.goto(`${ctx.base}/me`);
+  await page.goto(`${ctx.webBase}/me`);
   await page.evaluate((k) => localStorage.setItem('ai-smash-key', k), ownerKey);
-  await page.goto(`${ctx.base}/rooms/${roomId}`);
+  await page.goto(`${ctx.webBase}/rooms/${roomId}`);
+  // 不能直接 waitFrame('state')：上一用例的暂停/恢复已推过 state 帧（roomStatus），
+  // 会误命中旧帧。与 beforeAll 相同，用 frames 快照切片等「新」的 state.kicked 帧。
+  const known = agent.frames.length;
   await page.getByText('踢出').click();
   await expect(page.getByText('受控豆')).toBeHidden();
-  await expect(agent.waitFrame('state', 10_000).then((f) => f.kicked)).resolves.toBe(true);
+  await expect.poll(async () =>
+    agent.frames.slice(known).some((f) => f.type === 'state' && f.kicked === true),
+  ).toBe(true);
 });
