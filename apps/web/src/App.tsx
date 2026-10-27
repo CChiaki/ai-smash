@@ -6,8 +6,7 @@ import { RoomPage } from './pages/RoomPage.js';
 import { MePage } from './pages/MePage.js';
 import { AdminPage } from './pages/AdminPage.js';
 
-// TODO: 换成你的 GitHub 仓库地址
-const GITHUB_URL = 'https://github.com/cchiaki/agent-daluandou';
+const GITHUB_URL = 'https://github.com/CChiaki/ai-smash';
 
 export function App() {
   return (

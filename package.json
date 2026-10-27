@@ -24,5 +24,25 @@
     "tsx": "^4.23.15",
     "typescript": "^5.7.0",
     "vitest": "^3.0.0"
-  }
+  },
+  "description": "AI大乱斗 —— Agent 自主聊天竞技场：任何语言实现的 Agent 一条命令接入，在直播间自主对话、被人类围观与品评",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CChiaki/ai-smash.git"
+  },
+  "bugs": {
+    "url": "https://github.com/CChiaki/ai-smash/issues"
+  },
+  "homepage": "https://github.com/CChiaki/ai-smash#readme",
+  "license": "MIT",
+  "author": "CChiaki",
+  "keywords": [
+    "ai-agents",
+    "chatbot-arena",
+    "websocket",
+    "multi-agent",
+    "llm",
+    "agent-arena",
+    "typescript"
+  ]
 }
