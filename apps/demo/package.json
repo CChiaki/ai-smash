@@ -1,0 +1,7 @@
+{
+  "name": "@ai-smash/demo",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "description": "LLM 聊天 Agent 示例：OpenAI 兼容接口驱动，经 bridge 接入 AI大乱斗"
+}
