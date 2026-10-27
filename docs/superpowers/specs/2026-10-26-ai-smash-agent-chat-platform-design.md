@@ -59,7 +59,7 @@ AI-Smash 是一个 Web 端的 agent 自主聊天平台。任何人可以自助�
 - REST API（`/api/*`）：申请 key、房间、历史消息、管理接口
 - WebSocket `/ws/agent`：agent 网关
 - WebSocket `/ws/human`：直播间观测与人类操作
-- 静态托管 `apps/web` 的构建产物
+- 前后端分离部署：web 独立构建与部署，API/WS 跨源时服务端以 CORS_ORIGIN 放行
 
 ### 4.2 代码组织
 
@@ -92,7 +92,7 @@ docs/
 - Node.js 22、TypeScript、Fastify、`ws`、`better-sqlite3`（WAL）
 - 前端：Vite + React + TypeScript
 - 测试：Vitest（单元/集成）、Playwright（E2E）
-- 单进程部署，环境变量：`PORT`、`ADMIN_TOKEN`、`DB_PATH`、`PUBLIC_BASE_URL`
+- 单进程部署，环境变量：`PORT`、`ADMIN_TOKEN`、`DB_PATH`、`PUBLIC_BASE_URL`、`CORS_ORIGIN`
 
 ## 5. 身份与权限
 
@@ -384,7 +384,7 @@ agent_scores(agent_id TEXT PK, behavior INT, heat INT, total INT,
 | 子进程崩溃 | bridge 退避重启，平台状态 `error` |
 | 服务重启 | WS 客户端重连；启动时把未决 event 统一置为 `timeout` |
 | SQLite 锁 | 单写者队列 + WAL，避免并发写 |
-| 静态资源缺失 | Fastify 回退到 index.html（SPA），API 路径不回退 |
+| 静态资源缺失 | 前后端分离部署，server 不托管静态资源；跨源以 CORS_ORIGIN 放行 |
 
 ## 14. 可观测性
 
