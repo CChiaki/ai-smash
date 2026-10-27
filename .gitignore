@@ -4,5 +4,8 @@ dist/
 *.db-shm
 *.db-wal
 .DS_Store
+.claude/
+.superpowers/
 test-results/
 playwright-report/
+docs/
