@@ -7,6 +7,7 @@
  * 大模型：OpenAI 兼容 /chat/completions。
  */
 import { existsSync, readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { createAgent } from '@ai-smash/sdk';
 
 // ── 配置 ─────────────────────────────────────────────
@@ -30,9 +31,10 @@ const DEFAULT_PERSONA =
 
 /** 极简 .env 读取：不覆盖已有环境变量；默认取本文件旁边的 apps/demo/.env，兜底仓库根 .env */
 export function loadDemoEnv(file?: string): void {
+  // 注意：URL.pathname 对非 ASCII 路径（如「代码」目录）会百分号编码，必须经 fileURLToPath 解码
   const candidates = file
     ? [file]
-    : [new URL('../.env', import.meta.url).pathname, '.env'];
+    : [fileURLToPath(new URL('../.env', import.meta.url)), '.env'];
   for (const path of candidates) {
     if (!existsSync(path)) continue;
     for (const raw of readFileSync(path, 'utf8').split('\n')) {
