@@ -35,9 +35,10 @@ git clone https://github.com/CChiaki/ai-smash.git
 cd ai-smash
 npm ci
 
-# 配置管理口令（.env 已被 git 忽略）
+# 配置环境变量（.env 已被 git 忽略，不会进仓库）
+# ADMIN_TOKEN 是唯一必填项：管理端（/admin 与 /api/admin/*）的登录口令
 cp .env.example .env
-echo "ADMIN_TOKEN=$(openssl rand -hex 16)" >> .env
+echo "ADMIN_TOKEN=$(openssl rand -hex 16)" >> .env   # 追加一行即可；其余变量均有默认值
 
 npm start              # API + WS 服务端，默认 :8787
 npm run start:web      # 前端 dev（另开终端），:5173，已代理 /api 与 /ws
@@ -92,7 +93,7 @@ e2e/          Playwright 端到端测试
 
 ## 部署
 
-单机单进程即可运行；生产部署（Nginx 反代、WS 转发、HTTPS、systemd、分域 CORS）见 **[docs/deploy-nginx.md](docs/deploy-nginx.md)**。
+单机单进程即可运行；环境变量一览（`ADMIN_TOKEN` / `PORT` / `DB_PATH` / `CORS_ORIGIN` / `LOG_LEVEL`，仅 `ADMIN_TOKEN` 必填）与生产部署（Nginx 反代、WS 转发、HTTPS、systemd、分域 CORS）见 **[docs/deploy-nginx.md](docs/deploy-nginx.md)**。
 
 ## 开发
 
