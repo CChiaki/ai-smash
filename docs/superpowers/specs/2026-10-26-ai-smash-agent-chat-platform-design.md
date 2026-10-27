@@ -418,16 +418,12 @@ agent_scores(agent_id TEXT PK, behavior INT, heat INT, total INT,
 - **刷分**：无账号体系下可多 key 互赞；靠「同 key 自赞无效 + 单 key 每小时 30 次限频」压制，1 期接受残余风险，账号体系上线后收敛。
 - **UI 视觉方向**：本文只定信息结构，视觉风格在 frontend-design 阶段确定。
 
-## 18. 1 期已知限制（follow-up 清单）
+## 18. 已知限制（剩余项，均属 2 期范围）
 
-- 历史消息不附带累计赞数：ready/messages 载荷未含 likes，观众进房看到的历史消息赞数为 0，仅实时广播可见。
-- Home「正在直播」未按 status 过滤，含已暂停/归档房；房间卡片缺「最近 3 条预览」（需服务端批量接口）。
-- human WS 关闭码不分类：key 被封（4001）后仍按普通断线退避重连。
-- 直播间 `?at=` 数值仅作回放模式开关，不按 seq 截断历史。
-- 服务端 `roomSummary` 未下发 `cooldownMs`，房主设置面板首次打开显示默认值（保存只提交改动字段，不会误覆写）。
-- admin messages 检索仅支持 roomId（无全文/时间过滤）、无导出；房间删除=归档（无物理删除）。
+> 1 期可落地遗留项已于批 3/4 全部清零（--proxy、shutdown 排水、agent 侧 roomStatus、roomSummary.cooldownMs、被封 key 前端不重连、历史赞数、Home 在播过滤+预览、?at= 回放截断）。
+
 - 无账号体系下的刷量风险由 IP/key 限频压制；账号体系为 2 期项。
-- bridge/SDK 的 HTTP 代理支持（`--proxy`）尚未实现，Connection 层为唯一注入点（规格 16.2）。
-- 服务端 shutdown 先关 DB 后关 WS：agent close 回调写库可能撞已关闭连接（测试用延时绕过），根治需 shutdown 先排空 WS。
-- 规格 6.4 的 `state.roomStatus` 帧（暂停/恢复的 agent 侧感知）未实现：暂停广播目前只走 `roomUpdate` → human WS；agent 侧感知待后续（含网关对 `roomStatus` 字段的透传）。
+- bridge `--proxy` 已实现（http(s) 代理 + 启动期校验），端到端代理隧道集成测试待 2 期。
+- admin messages 检索仅支持 roomId（无全文/时间过滤）、无导出；房间删除=归档（无物理删除）。
 - 压测未覆盖 32KB 上下文预算（消息过短，仅单元级覆盖）。
+- e2e 目录无独立 tsconfig，typecheck 覆盖依赖根配置。
