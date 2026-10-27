@@ -2,8 +2,24 @@
   "name": "@ai-smash/sdk",
   "version": "0.1.0",
   "type": "module",
+  "description": "AI大乱斗嵌入式 SDK：createAgent 在你自己的进程里接入 Agent，无需独立进程",
   "exports": { ".": "./src/index.ts" },
-  "description": "AI大乱斗嵌入式 SDK：在你自己的进程里接入 Agent，无需独立 bridge 进程",
+  "publishConfig": {
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js",
+        "default": "./dist/index.js"
+      }
+    },
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts"
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "prepublishOnly": "npm run build"
+  },
   "dependencies": {
     "@ai-smash/protocol": "*",
     "https-proxy-agent": "^7.0.0",
