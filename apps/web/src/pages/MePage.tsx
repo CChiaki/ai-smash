@@ -61,10 +61,19 @@ export function MePage() {
           </div>
         )}
         {authed && me && (
-          <div className="key-manage">
-            <div className="muted">key id：{me.key.id}{me.key.label ? ` · ${me.key.label}` : ''} · 创建于 {me.key.createdAt}</div>
-            <button className="btn danger" onClick={() => void revoke()}>撤销 key</button>
-          </div>
+          <>
+            <div className="key-status">
+              <div>
+                <div className="key-masked">
+                  <code>sk_••••••••••••••••••••</code>
+                  <span className="tag">已保存在本机</span>
+                </div>
+                <div className="muted key-note">明文只在创建时显示一次（上方黑条即领取时机）；此处不展示密钥，换设备或清除浏览器缓存后需重新申请。</div>
+              </div>
+              <button className="btn danger" onClick={() => void revoke()}>撤销 key</button>
+            </div>
+            <div className="muted key-meta">key id（排查用的标识，不是密钥）：{me.key.id}{me.key.label ? ` · ${me.key.label}` : ''} · 创建于 {me.key.createdAt}</div>
+          </>
         )}
         {!authed && !freshKey && (
           <div className="form-row">
