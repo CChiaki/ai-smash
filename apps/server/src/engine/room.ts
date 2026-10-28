@@ -3,7 +3,7 @@ import { DEFAULT_LIMITS } from '@ai-smash/protocol';
 import type { Bus } from '../bus.js';
 import { Topics } from '../topics.js';
 import type { Storage } from '../storage/types.js';
-import type { RoomRow } from '../storage/types.js';
+import type { AgentRow, RoomRow } from '../storage/types.js';
 import { toChatMessage } from './chat.js';
 import { newId } from '../ids.js';
 import { EngineError } from './errors.js';
@@ -141,7 +141,18 @@ export class RoomEngine {
     const message = this.insertMessage(roomId, {
       kind: 'human', name: senderName,
     }, keyId, null, text, null);
-    this.dispatchForNewMessage(roomId, message);
+    const mentions = this.resolveMentions(roomId, text);
+    if (mentions.matched.length > 0) {
+      for (const agent of mentions.matched) {
+        this.dispatchMention(roomId, agent, message.id);
+      }
+    }
+    if (mentions.unknown.length > 0) {
+      this.systemNotice(roomId, `房间内没有叫 ${mentions.unknown.join('、')} 的 Agent`);
+    }
+    if (mentions.matched.length === 0 && mentions.unknown.length === 0) {
+      this.dispatchForNewMessage(roomId, message); // 无 @：常规广播
+    }
     return message;
   }
 
@@ -206,9 +217,62 @@ export class RoomEngine {
     }
   }
 
+  /** 解析人类消息中的 @提及：返回按名字匹配到的成员 Agent 与未匹配名字（规格 §2.2.1） */
+  private resolveMentions(roomId: string, text: string): { matched: AgentRow[]; unknown: string[] } {
+    const roster = this.deps.storage.listRoomAgents(roomId)
+      .filter((ra) => ra.status !== 'kicked')
+      .map((ra) => this.deps.storage.getAgent(ra.agentId))
+      .filter((a): a is NonNullable<typeof a> => Boolean(a));
+    const matched: AgentRow[] = [];
+    const unknown: string[] = [];
+    const seen = new Set<string>();
+    for (const m of text.matchAll(/@([^\s@]{1,32})/g)) {
+      const raw = m[1];
+      const key = raw.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const agent = roster.find((a) => a.name.toLowerCase() === key);
+      if (agent && !matched.some((a) => a.id === agent.id)) matched.push(agent);
+      else if (!agent) unknown.push(raw);
+    }
+    return { matched, unknown };
+  }
+
+  /** 系统提示消息：落库并广播给观测端，但不触发任何派发 */
+  private systemNotice(roomId: string, text: string): void {
+    this.insertMessage(roomId, { kind: 'system', name: 'system' }, null, null, text, null);
+  }
+
+  /** @定向派发：豁免冷却与连续上限；成员资格/在线/速率仍生效（规格 §2.2.2） */
+  private dispatchMention(roomId: string, agent: AgentRow, messageId: string): void {
+    const room = this.deps.storage.getRoom(roomId);
+    if (!room || room.status !== 'active') return;
+    const ra = this.deps.storage.getRoomAgent(roomId, agent.id);
+    if (!ra || ra.status !== 'active') {
+      this.systemNotice(roomId, `房间内没有叫 ${agent.name} 的 Agent`);
+      return;
+    }
+    if (agent.status === 'offline' || agent.status === 'error') {
+      this.systemNotice(roomId, `${agent.name} 不在线`);
+      return;
+    }
+    const rt = this.runtimeOf(roomId, agent.id);
+    const cutoff = Date.now() - 60_000;
+    rt.posts = rt.posts.filter((t) => t > cutoff);
+    if (rt.posts.length >= this.limits.agentPerMinute) return; // 速率仍生效：静默跳过
+    if (this.inflight.has(this.key(roomId, agent.id))) {
+      // 在途：合并为 pending，并在其完成后的派发中豁免冷却/连续
+      rt.mentionBypass = true;
+      rt.pendingMessageId = messageId;
+      return;
+    }
+    this.dispatchToAgent(roomId, agent.id, messageId, this.buildContext(roomId), { mentioned: true });
+  }
+
   private dispatchToAgent(
     roomId: string, agentId: string, triggerMessageId: string,
     context: { messages: ChatMessage[]; truncated: boolean },
+    opts?: { mentioned?: boolean },
   ): void {
     const k = this.key(roomId, agentId);
     if (this.inflight.has(k)) {
@@ -221,7 +285,7 @@ export class RoomEngine {
     const now = Date.now();
     const nowIso = new Date(now).toISOString();
     const eventId = newId('ev');
-    this.deps.storage.insertEvent({ id: eventId, roomId, agentId, triggerMessageId, notifiedAt: nowIso });
+    this.deps.storage.insertEvent({ id: eventId, roomId, agentId, triggerMessageId, notifiedAt: nowIso, mentioned: opts?.mentioned ?? false });
     this.deps.storage.bumpStats(agentId, { delivered: 1 });
     const inflight: Inflight = {
       eventId, triggerMessageId, notifiedAt: now,
@@ -323,8 +387,10 @@ export class RoomEngine {
     const rt = this.runtimeOf(roomId, agentId);
     const pending = rt.pendingMessageId;
     rt.pendingMessageId = null;
-    const blocked = spoke && rt.cooldownUntil > Date.now();
-    if (pending && !blocked && this.canDispatch(roomId, agentId)) {
+    const bypass = rt.mentionBypass;
+    const blocked = spoke && rt.cooldownUntil > Date.now() && !bypass;
+    if (pending && !blocked && this.canDispatch(roomId, agentId, { mention: bypass })) {
+      rt.mentionBypass = false; // 豁免随本次派发消费
       this.dispatchToAgent(roomId, agentId, pending, this.buildContext(roomId));
     }
     this.emitPresence(roomId);
@@ -334,13 +400,13 @@ export class RoomEngine {
     const k = this.key(roomId, agentId);
     let rt = this.runtime.get(k);
     if (!rt) {
-      rt = { cooldownUntil: 0, consecutive: 0, posts: [], pendingMessageId: null };
+      rt = { cooldownUntil: 0, consecutive: 0, posts: [], pendingMessageId: null, mentionBypass: false };
       this.runtime.set(k, rt);
     }
     return rt;
   }
 
-  private canDispatch(roomId: string, agentId: string): boolean {
+  private canDispatch(roomId: string, agentId: string, opts?: { mention?: boolean }): boolean {
     const room = this.deps.storage.getRoom(roomId);
     if (!room || room.status !== 'active') return false;
     const agent = this.deps.storage.getAgent(agentId);
@@ -348,8 +414,10 @@ export class RoomEngine {
     const ra = this.deps.storage.getRoomAgent(roomId, agentId);
     if (!ra || ra.status !== 'active') return false;
     const rt = this.runtimeOf(roomId, agentId);
-    if (rt.cooldownUntil > Date.now()) return false;
-    if (rt.consecutive >= this.limits.maxConsecutive) return false;
+    if (!opts?.mention) {
+      if (rt.cooldownUntil > Date.now()) return false;
+      if (rt.consecutive >= this.limits.maxConsecutive) return false;
+    }
     const cutoff = Date.now() - 60_000;
     rt.posts = rt.posts.filter((t) => t > cutoff);
     if (rt.posts.length >= this.limits.agentPerMinute) return false;
@@ -424,4 +492,5 @@ interface AgentRoomRuntime {
   consecutive: number;
   posts: number[];
   pendingMessageId: string | null;
+  mentionBypass: boolean;
 }
