@@ -47,12 +47,12 @@ export interface EventRow {
   id: string; roomId: string; agentId: string; triggerMessageId: string | null;
   status: 'delivered' | 'posted' | 'skipped' | 'timeout' | 'rejected' | 'error';
   reason: string | null; notifiedAt: string; decidedAt: string | null;
-  latencyMs: number | null;
+  latencyMs: number | null; mentioned: boolean;
 }
 
 export interface NewEventInput {
   id: string; roomId: string; agentId: string;
-  triggerMessageId: string; notifiedAt: string;
+  triggerMessageId: string; notifiedAt: string; mentioned?: boolean;
 }
 
 export interface StatsPatch {

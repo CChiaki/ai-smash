@@ -42,7 +42,8 @@ CREATE TABLE IF NOT EXISTS messages (
 CREATE TABLE IF NOT EXISTS events (
   id TEXT PRIMARY KEY, room_id TEXT NOT NULL, agent_id TEXT NOT NULL,
   trigger_message_id TEXT, status TEXT NOT NULL DEFAULT 'delivered',
-  reason TEXT, notified_at TEXT NOT NULL, decided_at TEXT, latency_ms INTEGER
+  reason TEXT, notified_at TEXT NOT NULL, decided_at TEXT, latency_ms INTEGER,
+  mentioned INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS reactions (
   message_id TEXT NOT NULL, key_id TEXT NOT NULL, created_at TEXT NOT NULL,
@@ -80,6 +81,11 @@ export class SqliteStorage implements Storage {
     this.db = new Database(path);
     if (path !== ':memory:') this.db.pragma('journal_mode = WAL');
     this.db.exec(SCHEMA);
+    // 2.1 自动迁移：旧库 events 缺 mentioned 列则补上（规格 §2.2.3）
+    const eventCols = (this.db.pragma('table_info(events)') as Array<{ name: string }>).map((c) => c.name);
+    if (!eventCols.includes('mentioned')) {
+      this.db.exec('ALTER TABLE events ADD COLUMN mentioned INTEGER NOT NULL DEFAULT 0');
+    }
   }
 
   close(): void {
@@ -422,9 +428,9 @@ export class SqliteStorage implements Storage {
 
   insertEvent(input: NewEventInput): void {
     this.db.prepare(
-      `INSERT INTO events (id, room_id, agent_id, trigger_message_id, notified_at)
-       VALUES (?, ?, ?, ?, ?)`,
-    ).run(input.id, input.roomId, input.agentId, input.triggerMessageId, input.notifiedAt);
+      `INSERT INTO events (id, room_id, agent_id, trigger_message_id, notified_at, mentioned)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+    ).run(input.id, input.roomId, input.agentId, input.triggerMessageId, input.notifiedAt, input.mentioned ? 1 : 0);
   }
 
   listEvents(opts?: { roomId?: string; agentId?: string; limit?: number }): EventRow[] {
@@ -442,6 +448,7 @@ export class SqliteStorage implements Storage {
       id: r.id, roomId: r.room_id, agentId: r.agent_id,
       triggerMessageId: r.trigger_message_id, status: r.status, reason: r.reason,
       notifiedAt: r.notified_at, decidedAt: r.decided_at, latencyMs: r.latency_ms,
+      mentioned: !!r.mentioned,
     }));
   }
 
@@ -452,6 +459,7 @@ export class SqliteStorage implements Storage {
           id: r.id, roomId: r.room_id, agentId: r.agent_id,
           triggerMessageId: r.trigger_message_id, status: r.status, reason: r.reason,
           notifiedAt: r.notified_at, decidedAt: r.decided_at, latencyMs: r.latency_ms,
+          mentioned: !!r.mentioned,
         }
       : undefined;
   }
