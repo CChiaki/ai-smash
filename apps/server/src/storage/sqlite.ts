@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS messages (
   id TEXT PRIMARY KEY, room_id TEXT NOT NULL, seq INTEGER NOT NULL,
   sender_kind TEXT NOT NULL, sender_name TEXT NOT NULL,
   agent_id TEXT, key_id TEXT, text TEXT NOT NULL, reply_to TEXT,
-  deleted_at TEXT, created_at TEXT NOT NULL, UNIQUE(room_id, seq)
+  deleted_at TEXT, attachments TEXT, created_at TEXT NOT NULL, UNIQUE(room_id, seq)
 );
 CREATE TABLE IF NOT EXISTS events (
   id TEXT PRIMARY KEY, room_id TEXT NOT NULL, agent_id TEXT NOT NULL,
@@ -85,6 +85,11 @@ export class SqliteStorage implements Storage {
     const eventCols = (this.db.pragma('table_info(events)') as Array<{ name: string }>).map((c) => c.name);
     if (!eventCols.includes('mentioned')) {
       this.db.exec('ALTER TABLE events ADD COLUMN mentioned INTEGER NOT NULL DEFAULT 0');
+    }
+    // 2.3-2.5 自动迁移：旧库 messages 缺 attachments 列则补上
+    const msgCols = (this.db.pragma('table_info(messages)') as Array<{ name: string }>).map((c) => c.name);
+    if (!msgCols.includes('attachments')) {
+      this.db.exec('ALTER TABLE messages ADD COLUMN attachments TEXT');
     }
   }
 
@@ -363,6 +368,7 @@ export class SqliteStorage implements Storage {
       id: r.id, roomId: r.room_id, seq: r.seq, senderKind: r.sender_kind,
       senderName: r.sender_name, agentId: r.agent_id, keyId: r.key_id,
       text: r.text, replyTo: r.reply_to, deletedAt: r.deleted_at, createdAt: r.created_at,
+      attachments: r.attachments ? JSON.parse(r.attachments) : undefined,
     };
   }
 
@@ -375,16 +381,18 @@ export class SqliteStorage implements Storage {
         .get(input.roomId) as any
     ).s + 1;
     this.db.prepare(
-      `INSERT INTO messages (id, room_id, seq, sender_kind, sender_name, agent_id, key_id, text, reply_to, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO messages (id, room_id, seq, sender_kind, sender_name, agent_id, key_id, text, reply_to, created_at, attachments)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
       id, input.roomId, seq, input.senderKind, input.senderName,
       input.agentId, input.keyId, input.text, input.replyTo, input.createdAt,
+      input.attachments ? JSON.stringify(input.attachments) : null,
     );
     return {
       id, roomId: input.roomId, seq, senderKind: input.senderKind, senderName: input.senderName,
       agentId: input.agentId, keyId: input.keyId, text: input.text,
       replyTo: input.replyTo, deletedAt: null, createdAt: input.createdAt,
+      attachments: input.attachments,
     };
   }
 

@@ -1,4 +1,4 @@
-import type { SenderKind } from '@ai-smash/protocol';
+import type { Attachment, SenderKind } from '@ai-smash/protocol';
 
 export interface KeyRow {
   id: string; hash: string; label: string | null;
@@ -35,12 +35,14 @@ export interface MessageRow {
   agentId: string | null; keyId: string | null;
   text: string; replyTo: string | null;
   deletedAt: string | null; createdAt: string;
+  attachments?: Attachment[];
 }
 
 export interface NewMessageInput {
   roomId: string; senderKind: SenderKind; senderName: string;
   agentId: string | null; keyId: string | null;
   text: string; replyTo: string | null; createdAt: string;
+  attachments?: Attachment[];
 }
 
 export interface EventRow {
