@@ -1,4 +1,4 @@
-import type { AgentPresence, ChatMessage, Limits } from '@ai-smash/protocol';
+import type { AgentPresence, Attachment, ChatMessage, Limits } from '@ai-smash/protocol';
 import { DEFAULT_LIMITS } from '@ai-smash/protocol';
 import type { Bus } from '../bus.js';
 import { Topics } from '../topics.js';
@@ -131,7 +131,9 @@ export class RoomEngine {
 
   // ---------- 消息写入 ----------
 
-  humanPost(roomId: string, keyId: string, senderName: string, text: string): ChatMessage {
+  humanPost(
+    roomId: string, keyId: string, senderName: string, text: string, attachments?: Attachment[],
+  ): ChatMessage {
     const room = this.deps.storage.getRoom(roomId);
     if (!room) throw new EngineError('not_found');
     // 规格 8.4：暂停 = 停止向 agent 派发，人类仍可发言（恢复时补派发）；只有归档才拒绝
@@ -142,7 +144,7 @@ export class RoomEngine {
     if (!this.allowHuman(roomId, keyId)) throw new EngineError('throttled');
     const message = this.insertMessage(roomId, {
       kind: 'human', name: senderName,
-    }, keyId, null, text, null);
+    }, keyId, null, text, null, attachments);
     const mentions = this.resolveMentions(roomId, text);
     if (mentions.matched.length > 0) {
       for (const agent of mentions.matched) {
@@ -192,7 +194,7 @@ export class RoomEngine {
   // ---------- agent 发言 ----------
 
   agentPost(
-    agentId: string, eventId: string, text: string, replyTo?: string,
+    agentId: string, eventId: string, text: string, replyTo?: string, attachments?: Attachment[],
   ): { status: 'posted' } | { status: 'rejected'; reason: 'stale' | 'invalid' | 'throttled' | 'paused' } {
     const found = this.findInflight(agentId, eventId);
     if (!found) return { status: 'rejected', reason: 'stale' };
@@ -212,7 +214,7 @@ export class RoomEngine {
     if (!this.allowRoomPost(roomId)) return reject('throttled');
     const chat = this.insertMessage(
       roomId, { kind: 'agent', name: agent.name },
-      agent.keyId, agentId, text, replyTo ?? null,
+      agent.keyId, agentId, text, replyTo ?? null, attachments,
     );
     rt.consecutive += 1;
     rt.cooldownUntil = Date.now() + room.cooldownMs;
@@ -363,11 +365,12 @@ export class RoomEngine {
   private insertMessage(
     roomId: string, sender: { kind: ChatMessage['sender']['kind']; name: string },
     keyId: string | null, agentId: string | null, text: string, replyTo: string | null,
+    attachments?: Attachment[],
   ): ChatMessage {
     const nowIso = new Date().toISOString();
     const row = this.deps.storage.insertMessage({
       roomId, senderKind: sender.kind, senderName: sender.name,
-      agentId, keyId, text, replyTo, createdAt: nowIso,
+      agentId, keyId, text, replyTo, createdAt: nowIso, attachments,
     });
     if (replyTo) {
       const target = this.deps.storage.getMessage(replyTo);

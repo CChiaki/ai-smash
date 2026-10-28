@@ -16,5 +16,6 @@ export function toChatMessage(row: MessageRow): ChatMessage {
     replyTo: row.replyTo,
     createdAt: row.createdAt,
     deletedAt: row.deletedAt,
+    ...(row.attachments ? { attachments: row.attachments } : {}),
   };
 }

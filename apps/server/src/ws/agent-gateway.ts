@@ -194,7 +194,7 @@ export class AgentGateway {
             const roomOfAgent = [...this.deps.storage.listRoomsOfAgent(id)].find((ra) => ra.status === 'active');
             if (!target || (roomOfAgent && target.roomId !== roomOfAgent.roomId)) replyTo = undefined;
           }
-          const r = this.deps.engine.agentPost(id, frame.eventId, frame.text, replyTo);
+          const r = this.deps.engine.agentPost(id, frame.eventId, frame.text, replyTo, frame.attachments);
           this.send(ws, { type: 'ack', eventId: frame.eventId, status: r.status, ...(r.status === 'rejected' ? { reason: (r as any).reason } : {}) });
           return;
         }
