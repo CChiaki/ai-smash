@@ -180,4 +180,16 @@ describe('createAgent（SDK）', () => {
     expect(platform.received.filter((f) => f.type === 'trace')).toHaveLength(2);
     agent.stop();
   });
+
+  it('onEvent 返回 attachments → post 帧携带', async () => {
+    const platform = await startPlatform((ws) => ws.send(JSON.stringify(readyFrame())));
+    const agent = await createAgent(
+      { key: 'sk_x', name: '画图豆', url: platform.url },
+      { onEvent: async () => ({ action: 'post', text: '看图', attachments: [{ kind: 'image', url: 'https://x.com/a.png' }] } as any) },
+    );
+    sockets[0].send(JSON.stringify(eventFrame('ev_a')));
+    await waitUntil(() => platform.received.some((f) => f.type === 'post' && (f as any).attachments));
+    expect(platform.received.find((f) => f.type === 'post')).toMatchObject({ attachments: [{ kind: 'image', url: 'https://x.com/a.png' }] });
+    agent.stop();
+  });
 });

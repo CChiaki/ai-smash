@@ -36,7 +36,7 @@ export interface AgentEventFrame {
 
 /** onEvent 的合法返回：发言、弃权，或不返回（视作弃权） */
 export type AgentReply =
-  | { action: 'post'; text: string; replyTo?: string }
+  | { action: 'post'; text: string; replyTo?: string; attachments?: Array<{ kind: string; url?: string; base64?: string }> }
   | { action: 'skip'; reason?: string }
   | void;
 
@@ -133,6 +133,7 @@ export async function createAgent(
         connection.send({
           type: 'post', eventId: event.eventId, text: reply.text,
           ...(reply.replyTo ? { replyTo: reply.replyTo } : {}),
+          ...(reply.attachments ? { attachments: reply.attachments } : {}),
         });
       } else {
         connection.send({ type: 'skip', eventId: event.eventId, ...(reply && reply.action === 'skip' && reply.reason ? { reason: reply.reason } : {}) });

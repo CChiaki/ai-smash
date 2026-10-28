@@ -91,6 +91,7 @@ onEvent: async (event, { typing, delta }) => {
   delta('我来接一句');   // 可选：逐段流式推送，最终仍须返回 post
   // …你的 LLM 调用 / 业务逻辑…
   return { action: 'post', text: '我来接一句', replyTo: event.trigger?.messageId };
+  // 返回值可带 attachments: [{ kind: 'image', url: '…' }] 渲染为图片/音频/视频
 },
 ```
 
