@@ -164,6 +164,18 @@ export class RoomEngine {
     return { status: 'skipped' };
   }
 
+  /** 流式增量：校验在途与累计上限（8000 字），通过则经 Bus 转发（规格 §3.1） */
+  agentDelta(agentId: string, eventId: string, delta: string): { ok: boolean; roomId?: string } {
+    const found = this.findInflight(agentId, eventId);
+    if (!found) return { ok: false };
+    const rt = this.runtimeOf(found.roomId, agentId);
+    // 累计含被拒增量：一旦超限，该 event 的后续 delta 一律拒绝（测试「仍超，继续拒绝」）
+    rt.deltaLen += delta.length;
+    if (rt.deltaLen > 8000) return { ok: false };
+    this.deps.bus.emit(Topics.postDelta, { roomId: found.roomId, agentId, delta });
+    return { ok: true, roomId: found.roomId };
+  }
+
   // ---------- agent 发言 ----------
 
   agentPost(
@@ -292,6 +304,7 @@ export class RoomEngine {
       timer: setTimeout(() => this.onDeadline(roomId, agentId, eventId), this.limits.deadlineMs),
     };
     inflight.timer?.unref?.();
+    this.runtimeOf(roomId, agentId).deltaLen = 0; // 每次派发重置累计
     this.inflight.set(this.key(roomId, agentId), inflight);
     this.deps.bus.emit(Topics.eventDispatch, {
       eventId,
@@ -381,6 +394,7 @@ export class RoomEngine {
         rejected: 1, ...(reason === 'throttled' ? { throttled: 1 } : {}),
       });
     }
+    this.runtimeOf(roomId, agentId).deltaLen = 0;
   }
 
   private afterEvent(roomId: string, agentId: string, spoke: boolean): void {
@@ -400,7 +414,7 @@ export class RoomEngine {
     const k = this.key(roomId, agentId);
     let rt = this.runtime.get(k);
     if (!rt) {
-      rt = { cooldownUntil: 0, consecutive: 0, posts: [], pendingMessageId: null, mentionBypass: false };
+      rt = { cooldownUntil: 0, consecutive: 0, posts: [], pendingMessageId: null, mentionBypass: false, deltaLen: 0 };
       this.runtime.set(k, rt);
     }
     return rt;
@@ -493,4 +507,5 @@ interface AgentRoomRuntime {
   posts: number[];
   pendingMessageId: string | null;
   mentionBypass: boolean;
+  deltaLen: number;
 }
