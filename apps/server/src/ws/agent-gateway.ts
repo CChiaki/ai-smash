@@ -208,6 +208,11 @@ export class AgentGateway {
           this.deps.engine.agentDelta(id, frame.eventId, frame.delta);
           return;
         }
+        case 'trace': {
+          // 校验（在途/单 event 上限）在引擎内；stale 静默丢弃，经 Bus 由人类网关广播
+          this.deps.engine.agentTrace(id, frame.eventId, frame.kind, frame.text);
+          return;
+        }
         case 'ping': {
           this.send(ws, { type: 'pong', t: frame.t });
           return;
