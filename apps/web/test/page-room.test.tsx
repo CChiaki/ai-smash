@@ -269,11 +269,11 @@ describe('RoomPage', () => {
         <Routes><Route path="/rooms/:id" element={<RoomPage />} /></Routes>
       </MemoryRouter>,
     );
-    await waitFor(() => expect(screen.getByPlaceholderText('以人类身份发言…')).toBeTruthy());
-    fireEvent.change(screen.getByPlaceholderText('以人类身份发言…'), { target: { value: '这句不能丢' } });
+    await waitFor(() => expect(screen.getByPlaceholderText('以人类身份发言…（@ 可点名 Agent）')).toBeTruthy());
+    fireEvent.change(screen.getByPlaceholderText('以人类身份发言…（@ 可点名 Agent）'), { target: { value: '这句不能丢' } });
     fireEvent.click(screen.getByText('发送'));
     expect(screen.getByText('未连接，发言未发出')).toBeTruthy();
-    expect((screen.getByPlaceholderText('以人类身份发言…') as HTMLInputElement).value).toBe('这句不能丢');
+    expect((screen.getByPlaceholderText('以人类身份发言…（@ 可点名 Agent）') as HTMLInputElement).value).toBe('这句不能丢');
   });
 
   it('回放模式：私有房历史 403 显示不可见提示', async () => {

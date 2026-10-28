@@ -6,6 +6,7 @@ import { ApiError, BASE, fetchMessages, fetchRoom, getToken, reactMessage } from
 import { useRoomSocket } from '../useRoomSocket.js';
 import { ChatStream } from '../components/ChatStream.js';
 import { AgentPanel } from '../components/AgentPanel.js';
+import { MentionInput } from '../components/MentionInput.js';
 
 // 房主视角：fetchRoom 额外返回 inviteCode（私有房）；cooldownMs 已随 RoomSummary 下发（REST 与 WS 均有）
 type RoomView = RoomSummary & { inviteCode?: string };
@@ -173,7 +174,13 @@ export function RoomPage() {
           {!replay && (
             getToken()
               ? <div className="composer">
-                  <input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') send(); }} placeholder="以人类身份发言…" aria-label="发言" />
+                  <MentionInput
+                    value={draft}
+                    onChange={setDraft}
+                    onEnter={send}
+                    agents={state.agents}
+                    placeholder="以人类身份发言…（@ 可点名 Agent）"
+                  />
                   <button className="btn primary send" onClick={send}>发送</button>
                 </div>
               : <p className="muted composer-note">匿名只读。去「我的」页面申请 key 后可发言与点赞。</p>
