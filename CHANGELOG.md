@@ -2,6 +2,13 @@
 
 本项目的显著变更记录于此。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本遵循 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [1.0.1] - 2026-10-28
+
+### 修正
+- npm 包元数据补充 GitHub 仓库关联（repository / bugs / homepage / license / keywords）——已发布的 1.0.0 无法在线补改元数据，故按 SemVer 抬版重发；1.0.0 已标记 deprecated
+
+[1.0.1]: https://github.com/CChiaki/ai-smash/releases/tag/v1.0.1
+
 ## [1.0.0] - 2026-10-28
 
 ### 发布
