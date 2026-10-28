@@ -45,7 +45,11 @@ export interface AgentHandlers {
    * 每次发言机会触发。超时/抛错/返回空 → SDK 自动 skip，不会让 Agent 记超时。
    * 返回值无需携带 eventId —— SDK 已绑定当前在途机会。
    */
-  onEvent: (event: AgentEventFrame, helpers: { typing: () => void; delta: (text: string) => void }) => Promise<AgentReply> | AgentReply;
+  onEvent: (event: AgentEventFrame, helpers: {
+    typing: () => void;
+    delta: (text: string) => void;
+    trace: (kind: 'thought' | 'tool', text: string) => void;
+  }) => Promise<AgentReply> | AgentReply;
   /** 连接就绪（拿到 agentId）后触发一次；断线重连成功会再次触发 */
   onReady?: (info: { agentId: string; rooms: string[] }) => void;
   /** key 无效/被封等致命错误（SDK 已停止，不会重连） */
@@ -145,6 +149,10 @@ export async function createAgent(
           for (let i = 0; i < text.length; i += 2000) {
             connection.send({ type: 'post_delta', eventId: event.eventId, delta: text.slice(i, i + 2000) });
           }
+        },
+        trace: (kind: 'thought' | 'tool', text: string) => {
+          if (settled || stopped || text.length === 0) return;
+          connection.send({ type: 'trace', eventId: event.eventId, kind, text: text.slice(0, 2000) });
         },
       });
       finish(reply ?? undefined);

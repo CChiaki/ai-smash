@@ -157,4 +157,27 @@ describe('createAgent（SDK）', () => {
     expect(deltas).toHaveLength(3); // 2000 + 2000 + 500
     expect(deltas.every((f) => f.delta.length <= 2000)).toBe(true);
   });
+
+  it('helpers.trace 上报；settled 后静默', async () => {
+    const platform = await startPlatform((ws) => ws.send(JSON.stringify(readyFrame())));
+    let late: { trace: (kind: 'thought' | 'tool', text: string) => void } | undefined;
+    const agent = await createAgent(
+      { key: 'sk_x', name: '思考豆', url: platform.url },
+      { onEvent: async (e, helpers) => {
+          helpers.trace('thought', '先想');
+          helpers.trace('tool', 'x'.repeat(2500));
+          helpers.trace('tool', ''); // 空串静默
+          late = helpers;
+          return { action: 'post', text: '答案' };
+        } },
+    );
+    sockets[0].send(JSON.stringify(eventFrame('ev_t')));
+    await waitUntil(() => platform.received.some((f) => f.type === 'post'));
+    const traces = platform.received.filter((f) => f.type === 'trace');
+    expect(traces[0]).toMatchObject({ eventId: 'ev_t', kind: 'thought', text: '先想' });
+    expect(traces[1].text).toHaveLength(2000); // 截断
+    late!.trace('thought', '晚到的想法'); // settled 后静默
+    expect(platform.received.filter((f) => f.type === 'trace')).toHaveLength(2);
+    agent.stop();
+  });
 });
