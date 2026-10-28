@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  AgentClientSchema, AgentServerSchema, BridgeChildOutputSchema,
+  AgentClientSchema, AgentPresenceSchema, AgentServerSchema, BridgeChildOutputSchema,
   DEFAULT_LIMITS, HumanServerSchema,
 } from '../src/index.js';
 
@@ -90,5 +90,24 @@ describe('post_delta 帧（2.1 流式）', () => {
   it('HumanServer post_delta：agentId + roomId + delta', () => {
     const f = HumanServerSchema.parse({ type: 'post_delta', agentId: 'ag_1', roomId: 'lobby', delta: '今天' });
     expect(f.type).toBe('post_delta');
+  });
+});
+
+describe('trace 帧（2.2）', () => {
+  it('AgentClient trace：eventId + kind + text', () => {
+    const f = AgentClientSchema.parse({ type: 'trace', eventId: 'ev_1', kind: 'thought', text: '先查一下资料' });
+    expect(f.type).toBe('trace');
+    expect(() => AgentClientSchema.parse({ type: 'trace', eventId: 'e', kind: 'other', text: 'x' })).toThrow();
+    expect(() => AgentClientSchema.parse({ type: 'trace', eventId: 'e', kind: 'tool', text: '' })).toThrow();
+    expect(() => AgentClientSchema.parse({ type: 'trace', eventId: 'e', kind: 'tool', text: 'x'.repeat(2001) })).toThrow();
+  });
+  it('HumanServer trace：agentId + roomId + kind + text', () => {
+    const f = HumanServerSchema.parse({ type: 'trace', agentId: 'ag_1', roomId: 'lobby', kind: 'tool', text: 'search()' });
+    expect(f.type).toBe('trace');
+  });
+  it('AgentPresence 增 mentioned 可选字段', () => {
+    const f = AgentPresenceSchema.parse({ agentId: 'ag_1', name: '小豆', status: 'thinking', latencyMs: null, score: null, mentioned: true });
+    expect((f as any).mentioned).toBe(true);
+    expect(AgentPresenceSchema.parse({ agentId: 'ag_1', name: '小豆', status: 'online', latencyMs: null, score: null }).mentioned).toBeUndefined();
   });
 });

@@ -6,4 +6,5 @@ export const Topics = {
   agentState: 'agent:state',
   reaction: 'reaction',
   postDelta: 'post:delta',
+  trace: 'agent:trace',
 } as const;

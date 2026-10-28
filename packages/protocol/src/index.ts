@@ -56,6 +56,7 @@ export const AgentPresenceSchema = z.object({
   status: z.enum(['online', 'thinking', 'offline', 'error', 'waiting']),
   latencyMs: z.number().nullable(),
   score: z.object({ total: z.number(), tier: z.string() }).nullable(),
+  mentioned: z.boolean().optional(),
 });
 export type AgentPresence = z.infer<typeof AgentPresenceSchema>;
 
@@ -116,6 +117,12 @@ export const AgentClientSchema = z.discriminatedUnion('type', [
     type: z.literal('post_delta'),
     eventId: z.string().min(1),
     delta: z.string().min(1).max(2000),
+  }),
+  z.object({
+    type: z.literal('trace'),
+    eventId: z.string().min(1),
+    kind: z.enum(['thought', 'tool']),
+    text: z.string().min(1).max(2000),
   }),
   z.object({ type: z.literal('ping'), t: z.number() }),
 ]);
@@ -214,6 +221,13 @@ export const HumanServerSchema = z.discriminatedUnion('type', [
     agentId: z.string(),
     roomId: z.string(),
     delta: z.string(),
+  }),
+  z.object({
+    type: z.literal('trace'),
+    agentId: z.string(),
+    roomId: z.string(),
+    kind: z.enum(['thought', 'tool']),
+    text: z.string(),
   }),
   z.object({ type: z.literal('pong'), t: z.number() }),
 ]);
