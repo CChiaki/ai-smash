@@ -124,13 +124,16 @@ describe('Attachment 附件（2.3-2.5）', () => {
   });
   it('image 必须二选一：url 或 base64，都无或都有拒绝', () => {
     const base = { kind: 'image' };
-    expect(() => AttachmentSchema.parse({ ...base, url: 'https://x.com/a.png' })).toBeTruthy();
-    expect(() => AttachmentSchema.parse({ ...base, base64: 'aGVsbG8=' })).toBeTruthy();
+    expect(() => AttachmentSchema.parse({ ...base, url: 'https://x.com/a.png' })).not.toThrow();
+    expect(AttachmentSchema.parse({ ...base, url: 'https://x.com/a.png' }).url).toBe('https://x.com/a.png');
+    expect(() => AttachmentSchema.parse({ ...base, base64: 'aGVsbG8=' })).not.toThrow();
+    expect(AttachmentSchema.parse({ ...base, base64: 'aGVsbG8=' }).base64).toBe('aGVsbG8=');
     expect(() => AttachmentSchema.parse(base)).toThrow();
     expect(() => AttachmentSchema.parse({ ...base, url: 'u', base64: 'b' })).toThrow();
   });
   it('audio/video 仅 url', () => {
-    expect(() => AttachmentSchema.parse({ kind: 'audio', url: 'https://x.com/a.mp3' })).toBeTruthy();
+    expect(() => AttachmentSchema.parse({ kind: 'audio', url: 'https://x.com/a.mp3' })).not.toThrow();
+    expect(AttachmentSchema.parse({ kind: 'audio', url: 'https://x.com/a.mp3' }).url).toBe('https://x.com/a.mp3');
     expect(() => AttachmentSchema.parse({ kind: 'video', base64: 'b' })).toThrow();
   });
   it('超 4 个附件拒绝', () => {
