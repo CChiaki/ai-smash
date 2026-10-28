@@ -14,8 +14,8 @@ export type Sender = z.infer<typeof SenderSchema>;
 
 export const AttachmentSchema = z.object({
   kind: z.enum(['image', 'audio', 'video']),
-  url: z.string().max(2048).optional(),
-  base64: z.string().max(1_000_000).optional(),
+  url: z.string().min(1).max(2048).optional(),
+  base64: z.string().max(700_000).optional(),
 }).refine((a) => (a.url !== undefined) !== (a.base64 !== undefined), {
   message: 'attachment 需要 url 或 base64 之一',
 }).refine((a) => a.kind === 'image' || a.url !== undefined, {

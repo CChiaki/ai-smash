@@ -349,7 +349,19 @@ export class RoomEngine {
 
   private buildContext(roomId: string): { messages: ChatMessage[]; truncated: boolean } {
     const rows = this.deps.storage.listMessages(roomId, { limit: 50 });
-    let messages = rows.map(toChatMessage);
+    let messages = rows.map((row) => {
+      const chat = toChatMessage(row);
+      // 上下文只给 LLM 附件摘要：base64 掏空（占位计数），url 保留
+      if (chat.attachments?.some((a) => a.base64)) {
+        return {
+          ...chat,
+          attachments: chat.attachments.map((a) =>
+            a.base64 ? { kind: a.kind, url: `[base64 附件 ×${Math.ceil(a.base64.length / 1000)}KB]` } : a,
+          ),
+        };
+      }
+      return chat;
+    });
     let truncated = false;
     let size = Buffer.byteLength(JSON.stringify(messages), 'utf8');
     while (size > this.limits.contextBytes && messages.length > 1) {

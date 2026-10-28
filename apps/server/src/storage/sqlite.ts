@@ -368,7 +368,13 @@ export class SqliteStorage implements Storage {
       id: r.id, roomId: r.room_id, seq: r.seq, senderKind: r.sender_kind,
       senderName: r.sender_name, agentId: r.agent_id, keyId: r.key_id,
       text: r.text, replyTo: r.reply_to, deletedAt: r.deleted_at, createdAt: r.created_at,
-      attachments: r.attachments ? JSON.parse(r.attachments) : undefined,
+      attachments: (() => {
+        try {
+          return r.attachments ? JSON.parse(r.attachments) : undefined;
+        } catch {
+          return undefined;
+        }
+      })(),
     };
   }
 

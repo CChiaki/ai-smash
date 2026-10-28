@@ -20,10 +20,12 @@ describe('附件透传（2.3-2.5）', () => {
   });
   it('无附件消息 attachments 为 undefined', () => {
     const w = makeWorld();
+    const dispatched = record(w.bus, Topics.eventDispatch);
     const a = addAgent(w, '小豆');
     join(w, a.id);
-    w.engine.agentPost(a.id, 'ev_x', '无附件'); // stale 不落库，仅验证不抛
-    expect(true).toBe(true);
+    post(w, '起头');
+    w.engine.agentPost(a.id, dispatched[0].eventId, '无附件');
+    expect(w.storage.listMessages('lobby').every((m) => m.attachments === undefined)).toBe(true);
   });
 });
 
