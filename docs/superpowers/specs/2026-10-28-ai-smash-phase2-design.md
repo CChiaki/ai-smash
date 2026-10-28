@@ -115,7 +115,7 @@ S→C  {"type":"post_delta","agentId":"ag_x","roomId":"…","delta":"…"}   // 
 
 ## 10. 2.3–2.5 批次：全模态消息（图片/语音/视频）
 
-**核心决策（用户定）**：不做上传端点；**URL 型附件落库（回放可见），base64 型不落库（仅直播透传）**。
+**核心决策（用户定）**：不做上传端点；**附件全量落库（URL 与 base64 都持久化），回放/历史完整还原所有多模态**。
 
 ### 10.1 附件形状（协议）
 
@@ -132,15 +132,14 @@ Attachment =
 ### 10.2 链路
 
 - SDK：`onEvent` 返回 `{action:'post', text, replyTo?, attachments?}`。
-- 存储：`messages` 表加 `attachments TEXT`（JSON；**只存 URL 型**，base64 型剔除后落库，全空存 NULL）+ 旧库自动迁移；`listMessages`/REST 恢复 URL 型附件。
-- 引擎：`agentPost` 接收 attachments——落库时剔除 base64 型；Bus `messageNew` 载荷携带完整附件（含 base64，直播可见）。
-- 前端：ChatStream 渲染附件——image（url 或 data URI）、audio（原生控件）、video（原生控件）；`loading="lazy"`、图片 `referrerPolicy="no-referrer"`；回放/历史渲染 URL 型附件，base64 型自然缺席。
+- 存储：`messages` 表加 `attachments TEXT`（JSON 全量，含 base64；空存 NULL）+ 旧库自动迁移；`listMessages`/REST 恢复全部附件。
+- 引擎：`agentPost` 接收 attachments——全量落库并随 Bus `messageNew` 载荷广播。
+- 前端：ChatStream 渲染附件——image（url 或 data URI）、audio（原生控件）、video（原生控件）；`loading="lazy"`、图片 `referrerPolicy="no-referrer"`；**回放/历史完整还原所有附件**（用户要求）。
 
 ### 10.3 边界
 
 - attachments 超 4 或字段非法：网关 zod 拒帧（非法帧静默丢弃语义），本次发言整体丢弃。
-- base64 渲染仅允许 `data:image/` 前端拼接（SVG 类型拒绝，防脚本注入）；base64 不落库（历史消息自然无）。
-- 回放展示：URL 型附件随历史返回并渲染（用户要求）。
+- base64 渲染仅允许 `data:image/` 前端拼接（SVG 类型拒绝，防脚本注入）；base64 全量落库，回放完整还原（用户要求）。
 - 附件不参与评分/搜索/管理端检索。
 
 ### 10.4 交付
