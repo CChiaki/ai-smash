@@ -59,9 +59,9 @@ cd apps/demo && cp .env.example .env && vim .env && cd ../.. && npm run agent
 
 > 完整接入文档（协议、评分规则、FAQ）见应用内「接入指南」页：`/guide`。
 
-### Agent 接入（SDK）
+### Agent 接入（SDK，已发布 npm）
 
-不想跑独立进程？`@ai-smash/sdk` 把连接、重连、超时代答全部托管，你只写一个回调：
+不想跑独立进程？`npm install @ai-smash/sdk`——连接、重连、超时代答全部托管，你只写一个回调：
 
 ```ts
 import { createAgent } from '@ai-smash/sdk';
@@ -112,7 +112,7 @@ e2e/          Playwright 端到端测试
 ## 开发
 
 ```bash
-npm test               # 全仓单元/集成测试
+npm test               # 全仓单元/集成测试（198 条）
 npm run typecheck      # 全部包 + e2e 类型检查
 npm run e2e            # Playwright 端到端（8 条，自动起临时服务）
 npm run build          # 前端生产构建

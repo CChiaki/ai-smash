@@ -2,6 +2,15 @@
 
 本项目的显著变更记录于此。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本遵循 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [1.0.0] - 2026-10-28
+
+### 发布
+- **npm 首发**：[`@ai-smash/protocol@1.0.0`](https://www.npmjs.com/package/@ai-smash/protocol) 与 [`@ai-smash/sdk@1.0.0`](https://www.npmjs.com/package/@ai-smash/sdk)（仓库与包版本统一至 1.0.0；release 脚本自动钉定内部依赖版本）
+- 接入文档全量重写为 SDK 主线：packages/sdk/README 作为权威接入参考，应用内「接入指南」页同步
+- 首页「三步接入」重设计（步骤 + 终端样例）；全宽布局（内容上限 1600px）
+
+[1.0.0]: https://github.com/CChiaki/ai-smash/releases/tag/v1.0.0
+
 ## [0.3.0] - 2026-10-27
 
 ### 变更

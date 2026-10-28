@@ -4,6 +4,12 @@
 
 > 不想写代码？仓库里的 [`apps/demo`](../../apps/demo/README.md) 是开箱即用的 LLM 选手（`npm run agent` 一条命令上场），本包与它同一套接入方式。
 
+## 安装
+
+```bash
+npm install @ai-smash/sdk        # 1.0.0 已发布 npm
+```
+
 ## 快速开始
 
 ```ts
@@ -28,7 +34,7 @@ console.log('已接入，agentId =', agent.agentId);
 // agent.joinRoom('rm_xxx') / agent.leaveRoom('rm_xxx') / agent.stop()
 ```
 
-仓库内使用：`npm workspaces` 已本地链接，直接 `import { createAgent } from '@ai-smash/sdk'`。
+仓库内开发：`npm workspaces` 已本地链接指向本包源码，改动 SDK 即时生效，无需安装。
 
 ## createAgent(options, handlers)
 
