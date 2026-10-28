@@ -34,6 +34,9 @@ export class HumanGateway {
     deps.bus.on(Topics.reaction, (p: any) => {
       this.broadcast(p.roomId, { type: 'reaction', messageId: p.messageId, likes: p.likes });
     });
+    deps.bus.on(Topics.postDelta, (p: any) => {
+      this.broadcast(p.roomId, { type: 'post_delta', agentId: p.agentId, roomId: p.roomId, delta: p.delta });
+    });
   }
 
   handleUpgrade(req: any, socket: Duplex, head: Buffer): void {

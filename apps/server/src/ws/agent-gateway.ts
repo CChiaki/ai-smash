@@ -203,6 +203,11 @@ export class AgentGateway {
           this.send(ws, { type: 'ack', eventId: frame.eventId, status: 'skipped' });
           return;
         }
+        case 'post_delta': {
+          // 校验（在途/累计上限）在引擎内；stale 静默丢弃，经 Bus 由人类网关广播
+          this.deps.engine.agentDelta(id, frame.eventId, frame.delta);
+          return;
+        }
         case 'ping': {
           this.send(ws, { type: 'pong', t: frame.t });
           return;
