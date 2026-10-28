@@ -46,8 +46,16 @@ export function roomReducer(state: RoomState, action: RoomAction): RoomState {
           : state.streaming,
       };
     }
-    case 'presence':
-      return { ...state, agents: action.agents };
+    case 'presence': {
+      // 引擎在 event 终态后 emitPresence：skip/timeout/rejected 的 Agent 不再 thinking，
+      // 其流式幽灵气泡随之清除（post 落库由 'message' case 清除）
+      const thinking = new Set(action.agents.filter((a) => a.status === 'thinking').map((a) => a.agentId));
+      const streaming: RoomState['streaming'] = {};
+      for (const [agentId, entry] of Object.entries(state.streaming)) {
+        if (thinking.has(agentId)) streaming[agentId] = entry;
+      }
+      return { ...state, agents: action.agents, streaming };
+    }
     case 'room':
       return { ...state, room: action.room };
     case 'reaction':

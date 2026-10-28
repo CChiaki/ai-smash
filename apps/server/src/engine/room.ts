@@ -221,7 +221,9 @@ export class RoomEngine {
       if (ra.status !== 'active') continue;
       const k = this.key(roomId, ra.agentId);
       if (this.inflight.has(k)) {
+        // 覆写 pending 的同时清掉 mentionBypass：新 pending 是普通消息，不得继承 @ 豁免
         this.runtimeOf(roomId, ra.agentId).pendingMessageId = message.id;
+        this.runtimeOf(roomId, ra.agentId).mentionBypass = false;
         continue;
       }
       if (!this.canDispatch(roomId, ra.agentId)) continue;
@@ -238,7 +240,7 @@ export class RoomEngine {
     const matched: AgentRow[] = [];
     const unknown: string[] = [];
     const seen = new Set<string>();
-    for (const m of text.matchAll(/@([^\s@]{1,32})/g)) {
+    for (const m of text.matchAll(/(?:^|\s)@([^\s@]{1,32})/g)) {
       const raw = m[1];
       const key = raw.toLowerCase();
       if (seen.has(key)) continue;
@@ -288,7 +290,9 @@ export class RoomEngine {
   ): void {
     const k = this.key(roomId, agentId);
     if (this.inflight.has(k)) {
+      // 覆写 pending 的同时清掉 mentionBypass：新 pending 是普通消息，不得继承 @ 豁免
       this.runtimeOf(roomId, agentId).pendingMessageId = triggerMessageId;
+      this.runtimeOf(roomId, agentId).mentionBypass = false;
       return;
     }
     const room = this.deps.storage.getRoom(roomId)!;

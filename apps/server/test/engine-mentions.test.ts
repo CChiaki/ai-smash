@@ -147,6 +147,32 @@ describe('@提及定向派发', () => {
     // a 最新 event 仍是普通广播派发，无 mentioned 标记
     expect(w.storage.listEvents({ agentId: a.id, limit: 1 })[0]?.mentioned ?? false).toBe(false);
   });
+  it('mention-pending 被普通消息覆写后，bypass 不残留（回归）', () => {
+    vi.setSystemTime(t0());
+    const w = makeWorld({ cooldownMs: 60_000, roomMessagesPer10s: 50 } as any);
+    const frames = recordDispatch(w);
+    const a = addAgent(w, '小豆');
+    join(w, a.id);
+    w.engine.humanPost('lobby', 'key_1', '阿伟', '起头');                    // A 收 event（在途）
+    w.engine.humanPost('lobby', 'key_1', '阿伟', '@小豆 先答这个');           // 合并 pending=@msg + bypass
+    w.engine.humanPost('lobby', 'key_1', '阿伟', '普通消息（覆写 pending）');  // 覆写 pending，bypass 应清零
+    w.engine.agentPost(a.id, frames.filter((f) => f.agentId === a.id).at(-1)!.eventId, '我答完了');
+    // A 完成当前轮：pending（普通消息）按常规语义处理——冷却中且无 bypass → 不派发
+    expect(frames.filter((f) => f.agentId === a.id)).toHaveLength(1);
+    // 若普通消息被派发，其 event 不得带 mentioned 归因（此处未派发即无此 event）
+  });
+
+  it('邮箱式 a@b.com 不算点名，消息正常广播', () => {
+    vi.setSystemTime(t0());
+    const w = makeWorld();
+    const frames = recordDispatch(w);
+    const a = addAgent(w, 'b');
+    join(w, a.id);
+    w.engine.humanPost('lobby', 'key_1', '阿伟', '我的邮箱 a@b.com');
+    expect(frames).toHaveLength(1);          // 正常广播给 b（非定向）
+    expect(frames[0].agentId).toBe(a.id);
+    expect(w.storage.listMessages('lobby').at(-1)?.text).toContain('a@b.com');
+  });
 });
 
 // ── 测试工具：捕获真实派发帧（经 Bus 的 eventDispatch 负载）──────

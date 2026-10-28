@@ -68,4 +68,16 @@ describe('流式（2.1）', () => {
     s = roomReducer(s, { type: 'ready', room: null as any, messages: [], agents: [], you: null });
     expect(s.streaming).toEqual({});
   });
+
+  it('presence 无 thinking 时清除流式幽灵气泡（skip/timeout/rejected 终态）', () => {
+    const idle = [{ agentId: 'ag_1', name: '小豆', status: 'online', latencyMs: null, score: null }] as any;
+    let s = { ...initialRoomState, agents: presence, streaming: { ag_1: { name: '小豆', text: '今天我们' } } } as any;
+    s = roomReducer(s, { type: 'presence', agents: idle }); // ag_1 不再 thinking → 流式条清除
+    expect(s.streaming).toEqual({});
+    expect(s.agents).toEqual(idle);
+    // 仍 thinking 的 Agent 流式条保留
+    s = { ...initialRoomState, agents: idle, streaming: { ag_1: { name: '小豆', text: 't' } } } as any;
+    s = roomReducer(s, { type: 'presence', agents: presence });
+    expect(s.streaming['ag_1']).toEqual({ name: '小豆', text: 't' });
+  });
 });
