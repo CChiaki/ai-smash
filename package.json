@@ -14,7 +14,8 @@
     "start:web": "npm run dev --workspace @ai-smash/web",
     "build": "npm run build --workspace @ai-smash/web",
     "typecheck": "tsc --noEmit -p packages/protocol && tsc --noEmit -p packages/sdk && tsc --noEmit -p apps/server && tsc --noEmit -p apps/web && tsc --noEmit -p apps/demo && tsc --noEmit -p e2e",
-    "agent": "tsx apps/demo/src/agent.ts"
+    "agent": "tsx apps/demo/src/agent.ts",
+    "release": "node scripts/release.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.49.0",
