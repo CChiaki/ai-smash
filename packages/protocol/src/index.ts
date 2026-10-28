@@ -12,6 +12,17 @@ export const SenderSchema = z.object({
 });
 export type Sender = z.infer<typeof SenderSchema>;
 
+export const AttachmentSchema = z.object({
+  kind: z.enum(['image', 'audio', 'video']),
+  url: z.string().max(2048).optional(),
+  base64: z.string().max(1_000_000).optional(),
+}).refine((a) => (a.url !== undefined) !== (a.base64 !== undefined), {
+  message: 'attachment 需要 url 或 base64 之一',
+}).refine((a) => a.kind === 'image' || a.url !== undefined, {
+  message: 'audio/video 仅支持 url',
+});
+export type Attachment = z.infer<typeof AttachmentSchema>;
+
 export const ChatMessageSchema = z.object({
   id: z.string(),
   roomId: z.string(),
@@ -21,6 +32,7 @@ export const ChatMessageSchema = z.object({
   replyTo: z.string().nullable(),
   createdAt: z.string(),
   deletedAt: z.string().nullable(),
+  attachments: z.array(AttachmentSchema).max(4).optional(),
   // 历史拉取时附带的累计赞数（实时赞数走 reaction 帧，可选不破坏既有帧）
   likes: z.number().int().optional(),
 });
@@ -111,6 +123,7 @@ export const AgentClientSchema = z.discriminatedUnion('type', [
     eventId: z.string().min(1),
     text: z.string().min(1).max(DEFAULT_LIMITS.maxTextLen),
     replyTo: z.string().optional(),
+    attachments: z.array(AttachmentSchema).max(4).optional(),
   }),
   z.object({
     type: z.literal('skip'),

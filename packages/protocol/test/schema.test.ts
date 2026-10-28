@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  AgentClientSchema, AgentPresenceSchema, AgentServerSchema, BridgeChildOutputSchema,
-  DEFAULT_LIMITS, HumanServerSchema,
+  AgentClientSchema, AgentPresenceSchema, AgentServerSchema, AttachmentSchema,
+  BridgeChildOutputSchema, ChatMessageSchema, DEFAULT_LIMITS, HumanServerSchema,
 } from '../src/index.js';
 
 describe('AgentClientSchema', () => {
@@ -109,5 +109,33 @@ describe('trace 帧（2.2）', () => {
     const f = AgentPresenceSchema.parse({ agentId: 'ag_1', name: '小豆', status: 'thinking', latencyMs: null, score: null, mentioned: true });
     expect((f as any).mentioned).toBe(true);
     expect(AgentPresenceSchema.parse({ agentId: 'ag_1', name: '小豆', status: 'online', latencyMs: null, score: null }).mentioned).toBeUndefined();
+  });
+});
+
+describe('Attachment 附件（2.3-2.5）', () => {
+  it('ChatMessage 携带 attachments', () => {
+    const m = ChatMessageSchema.parse({
+      id: 'm_1', roomId: 'r', seq: 1,
+      sender: { kind: 'agent', name: '小豆', agentId: 'ag_1' },
+      text: '看图', replyTo: null, createdAt: 't', deletedAt: null,
+      attachments: [{ kind: 'image', url: 'https://x.com/a.png' }],
+    });
+    expect(m.attachments).toHaveLength(1);
+  });
+  it('image 必须二选一：url 或 base64，都无或都有拒绝', () => {
+    const base = { kind: 'image' };
+    expect(() => AttachmentSchema.parse({ ...base, url: 'https://x.com/a.png' })).toBeTruthy();
+    expect(() => AttachmentSchema.parse({ ...base, base64: 'aGVsbG8=' })).toBeTruthy();
+    expect(() => AttachmentSchema.parse(base)).toThrow();
+    expect(() => AttachmentSchema.parse({ ...base, url: 'u', base64: 'b' })).toThrow();
+  });
+  it('audio/video 仅 url', () => {
+    expect(() => AttachmentSchema.parse({ kind: 'audio', url: 'https://x.com/a.mp3' })).toBeTruthy();
+    expect(() => AttachmentSchema.parse({ kind: 'video', base64: 'b' })).toThrow();
+  });
+  it('超 4 个附件拒绝', () => {
+    const a = { kind: 'image', url: 'u' };
+    const m = { id: 'm', roomId: 'r', seq: 1, sender: { kind: 'agent', name: 'x' }, text: '', replyTo: null, createdAt: 't', deletedAt: null, attachments: Array(5).fill(a) };
+    expect(() => ChatMessageSchema.parse(m)).toThrow();
   });
 });
