@@ -408,11 +408,13 @@ export class RoomEngine {
       const target = this.deps.storage.getMessage(replyTo);
       if (target?.agentId) this.deps.storage.bumpStats(target.agentId, { repliesReceived: 1 });
     }
-    // 任何他人发言都会打断连续发言计数（规格 8.3）
+    // 他人真正打断（消息即时派发或 agent 空闲）才重置连续发言计数（规格 8.3）；
+    // 在途或冷却排队中缓冲的追问不打断：连续应答链持续累计，由 maxConsecutive 截断
     for (const ra of this.deps.storage.listRoomAgents(roomId)) {
       if (ra.agentId !== agentId) {
-        const rt = this.runtime.get(this.key(roomId, ra.agentId));
-        if (rt) rt.consecutive = 0;
+        const k = this.key(roomId, ra.agentId);
+        const rt = this.runtime.get(k);
+        if (rt && !this.inflight.has(k) && !rt.cooldownTimer) rt.consecutive = 0;
       }
     }
     const chat = toChatMessage(row);

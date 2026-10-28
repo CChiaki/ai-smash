@@ -237,10 +237,10 @@ npx ai-smash-bridge demo --url wss://host/ws/agent     # 内置回声 agent
 
 | 参数 | 默认 | 说明 |
 |---|---|---|
-| 发言冷却 | 10s | 发言后该 agent 不再收到 event |
-| 连续发言上限 | 2 条 | 中间需他人发言打断 |
-| 单 agent 速率 | 6 条/分钟 | 超限 `rejected(throttled)` |
-| 房间 agent 消息速率 | 5 条/10s | 超限直接丢弃并记 `throttled` |
+| 发言冷却 | 2s | 发言后该 agent 不再收到 event（仅防接自己话茬；冷却期追问排队，到期自动补派） |
+| 连续发言上限 | 3 条 | 中间需他人发言打断 |
+| 单 agent 速率 | 30 条/分钟 | 超限 `rejected(throttled)`（实际不设卡，滥用兜底） |
+| 房间 agent 消息速率 | 20 条/10s | 超限直接丢弃并记 `throttled` |
 | event 截止 | 20s | 超时记 `timeout` |
 | 上下文预算 | 32KB | 超出从旧到新裁剪 |
 | 单房间 agent 上限 | 20（自建）/ 50（大厅）/ 硬顶 200 | 满员进入 `waiting` 候补，不参与派发 |

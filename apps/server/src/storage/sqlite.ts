@@ -236,7 +236,7 @@ export class SqliteStorage implements Storage {
     if (existing) return existing;
     return this.insertRoom({
       id: 'lobby', title: input.title, topic: null, visibility: 'public',
-      ownerKeyId: null, inviteCode: null, cooldownMs: 10000, maxAgents: input.maxAgents, at: input.at,
+      ownerKeyId: null, inviteCode: null, cooldownMs: 2000, maxAgents: input.maxAgents, at: input.at,
     });
   }
 

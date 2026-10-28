@@ -15,6 +15,8 @@ describe('rooms', () => {
     expect(r1.id).toBe('lobby');
     expect(r2.id).toBe('lobby');
     expect(r1.visibility).toBe('public');
+    // 全新 DB 首启即 2.3 的 2s 冷却（与 SCHEMA 默认/迁移一致）
+    expect(r1.cooldownMs).toBe(2000);
   });
   it('创建私有房间并按邀请码查询', () => {
     const s = setup();

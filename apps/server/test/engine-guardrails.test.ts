@@ -126,25 +126,38 @@ describe('冷却与速率', () => {
 });
 
 describe('连续发言上限', () => {
-  it('无人打断时最多连续 2 条（2.3 自我回声硬禁后，经合并 pending 接力触发）', () => {
+  it('连续应答链达上限后，pending 的追问不再补派（调高 maxConsecutive 则本用例失败）', () => {
     vi.setSystemTime(t0());
-    const w = makeWorld({ cooldownMs: 0, maxConsecutive: 2 } as any);
+    const w = makeWorld({ cooldownMs: 0, maxConsecutive: 2, roomMessagesPer10s: 50 } as any);
     const dispatched = record(w.bus, Topics.eventDispatch);
     const a = addAgent(w, '小豆');
     join(w, a.id);
-    w.engine.humanPost('lobby', 'key_1', '阿伟', '起');
-    w.engine.humanPost('lobby', 'key_1', '阿伟', '追问'); // 在途合并 pending
-    w.engine.agentPost(a.id, dispatched[0].eventId, '自言自语1');
-    // 发言后：自我回声硬禁 → 自己的消息不再派发给自己；pending 的「追问」补派
-    const e2 = dispatched.at(-1)!;
+    // 人类起头 → 派发 event1
+    w.engine.humanPost('lobby', 'key_1', '阿伟', '起头');
+    expect(dispatched).toHaveLength(1);
+    // 在途期间人类追问一 → 缓冲为 pending（不打断连续链）
+    w.engine.humanPost('lobby', 'key_1', '阿伟', '追问一');
+    expect(dispatched).toHaveLength(1);
+    w.engine.agentPost(a.id, dispatched[0].eventId, '回答一'); // consecutive = 1
+    // 回答后 pending 的「追问一」补派 → event2
+    expect(dispatched).toHaveLength(2);
+    const e2 = dispatched[1];
     expect(e2.trigger.messageId).toBe(
-      w.storage.listMessages('lobby').filter((m) => m.text === '追问')[0].id,
+      w.storage.listMessages('lobby').filter((m) => m.text === '追问一')[0].id,
     );
-    w.engine.agentPost(a.id, e2.eventId, '自言自语2');
-    // 第 2 次连续发言：consecutive 达上限，afterEvent 不再补派，链被截断
-    const agentMsgCount = w.storage.listMessages('lobby').filter((m) => m.senderKind === 'agent').length;
-    expect(agentMsgCount).toBe(2);
-    expect(dispatched.filter((f) => f.trigger.sender.kind === 'agent')).toHaveLength(0);
+    // 在途 event2 期间人类再追问二 → 又缓冲为 pending
+    w.engine.humanPost('lobby', 'key_1', '阿伟', '追问二');
+    expect(dispatched).toHaveLength(2);
+    const q2Id = w.storage.listMessages('lobby').filter((m) => m.text === '追问二')[0].id;
+    // event2 完成（consecutive = 2）：补派「追问二」被 canDispatch 拒（2 >= maxConsecutive 2）
+    w.engine.agentPost(a.id, e2.eventId, '回答二');
+    expect(dispatched).toHaveLength(2); // 无新派发
+    expect(dispatched.some((f) => f.trigger.messageId === q2Id)).toBe(false);
+    // storage 中该 agent 仍只有 event1/event2 两行
+    expect(w.storage.listEvents({ agentId: a.id })).toHaveLength(2);
+    // 此后也没有隐藏定时器把链续上（上限真正截断）
+    vi.advanceTimersByTime(60_000);
+    expect(dispatched).toHaveLength(2);
   });
 });
 
