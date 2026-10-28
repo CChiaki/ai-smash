@@ -53,6 +53,9 @@ function stagePackage(name, versions) {
     const src = join(pkgDir, f);
     if (existsSync(src)) cpSync(src, join(outDir, f));
   }
+
+  // scope 路由：在发布包目录内也能命中官方源（npm 的 .npmrc 查找止于最近的 package.json）
+  writeFileSync(join(outDir, '.npmrc'), '@ai-smash:registry=https://registry.npmjs.org/\n');
   if (!existsSync(join(outDir, 'LICENSE'))) {
     cpSync(join(ROOT, 'LICENSE'), join(outDir, 'LICENSE'));
   }
@@ -79,4 +82,5 @@ console.log(`
 发布产物已组装到 ${OUT}/
   发布：cd dist/protocol && npm publish --access public
         cd dist/sdk && npm publish --access public   （依赖 protocol 已发布）
+  注意：dist/ 已整棵重建，停留在旧 dist 目录里的终端请重新 cd 进去再执行 npm 命令
 `);
