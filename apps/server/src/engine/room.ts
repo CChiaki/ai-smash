@@ -386,12 +386,12 @@ export class RoomEngine {
   private afterEvent(roomId: string, agentId: string, spoke: boolean): void {
     const rt = this.runtimeOf(roomId, agentId);
     const pending = rt.pendingMessageId;
-    rt.pendingMessageId = null;
     const bypass = rt.mentionBypass;
+    rt.pendingMessageId = null;
+    rt.mentionBypass = false;
     const blocked = spoke && rt.cooldownUntil > Date.now() && !bypass;
     if (pending && !blocked && this.canDispatch(roomId, agentId, { mention: bypass })) {
-      rt.mentionBypass = false; // 豁免随本次派发消费
-      this.dispatchToAgent(roomId, agentId, pending, this.buildContext(roomId));
+      this.dispatchToAgent(roomId, agentId, pending, this.buildContext(roomId), bypass ? { mentioned: true } : undefined);
     }
     this.emitPresence(roomId);
   }

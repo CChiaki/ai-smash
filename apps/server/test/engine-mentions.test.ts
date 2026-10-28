@@ -17,8 +17,6 @@ describe('@提及定向派发', () => {
   it('被 @ 的 Agent 定向收到 event，其他 Agent 不广播', () => {
     vi.setSystemTime(t0());
     const w = makeWorld();
-    const dispatched = record(w.bus, 'post:dispatch-count') ?? [];
-    void dispatched;
     const a = addAgent(w, '小豆');
     const b = addAgent(w, '老豆');
     join(w, a.id);
@@ -101,6 +99,53 @@ describe('@提及定向派发', () => {
     // 注意：trigger 是被 @ 的那条消息（agent 的回复消息在其之前已落库，
     // 故不能断言 listMessages 的最后一条，那会是「回答第一问」）
     expect(frames.at(-1)!.trigger.messageId).toBe(mentionMsg.id);
+  });
+
+  it('@ 在途合并的延续派发 events 带 mentioned=true', () => {
+    vi.setSystemTime(t0());
+    const w = makeWorld({ cooldownMs: 60_000 } as any);
+    const a = addAgent(w, '小豆');
+    join(w, a.id);
+    const frames = recordDispatch(w);
+    w.engine.humanPost('lobby', 'key_1', '阿伟', '第一问');
+    w.engine.humanPost('lobby', 'key_1', '阿伟', '@小豆 第二问（在途合并）');
+    w.engine.agentPost(a.id, frames[0].eventId, '回答第一问');
+    // agentPost 后 cooldown 60s 生效；但 pending 是 @ 触发的 → 豁免冷却立即派发
+    expect(frames.length).toBe(2);
+    // 延续派发带 mentioned 归因
+    expect(w.storage.getEvent(frames.at(-1)!.eventId)?.mentioned).toBe(true);
+  });
+
+  it('速率受限导致 mention-pending 丢弃时，bypass 不残留到下一轮普通派发', () => {
+    vi.setSystemTime(t0());
+    const w = makeWorld({ cooldownMs: 60_000, roomMessagesPer10s: 50 } as any);
+    const a = addAgent(w, '小豆');
+    join(w, a.id);
+    const frames = recordDispatch(w);
+    // 5 轮 @ 点名 + 发言：把 a 的速率填到 5/6（每轮人类消息重置连续计数）
+    w.engine.humanPost('lobby', 'key_1', '阿伟', '起头');
+    w.engine.agentPost(a.id, frames.at(-1)!.eventId, '回答起头');
+    for (let i = 0; i < 4; i++) {
+      w.engine.humanPost('lobby', 'key_1', '阿伟', `@小豆 第 ${i} 问`);
+      w.engine.agentPost(a.id, frames.at(-1)!.eventId, `回答 ${i}`);
+    }
+    // 第 6 条派发（速率 5/6 仍放行），a 进入在途
+    w.engine.humanPost('lobby', 'key_1', '阿伟', '@小豆 第 5 问');
+    // 在途合并：pending + bypass 落下
+    w.engine.humanPost('lobby', 'key_1', '阿伟', '@小豆 追问（在途合并）');
+    // a 发言后速率满 6/6：afterEvent 里 pending 因速率受限被静默丢弃
+    w.engine.agentPost(a.id, frames.at(-1)!.eventId, '回答第 5 问');
+    expect(frames.length).toBe(6);
+    // 推进时间让冷却与速率窗口过期，普通消息恢复广播
+    vi.advanceTimersByTime(61_000);
+    w.engine.humanPost('lobby', 'key_1', '阿伟', '普通一问');
+    w.engine.humanPost('lobby', 'key_1', '阿伟', '在途期间的第二问');
+    expect(frames.length).toBe(7);
+    // 若 bypass 残留（旧 bug），agentPost 后的延续派发会带陈旧豁免穿透冷却 → 多出一帧
+    w.engine.agentPost(a.id, frames.at(-1)!.eventId, '回答普通一问');
+    expect(frames.length).toBe(7); // 冷却中的普通 pending 不派发
+    // a 最新 event 仍是普通广播派发，无 mentioned 标记
+    expect(w.storage.listEvents({ agentId: a.id, limit: 1 })[0]?.mentioned ?? false).toBe(false);
   });
 });
 
