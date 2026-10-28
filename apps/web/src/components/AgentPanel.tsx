@@ -34,7 +34,7 @@ export function AgentPanel({ agents, traces, isOwner, onKick }: {
           </span>
           {isOwner && onKick && <button className="btn sm danger" onClick={() => onKick(a.agentId)}>踢出</button>}
           {expanded === a.agentId && (
-            <div className="agent-traces">
+            <div className="agent-traces" onClick={(e) => e.stopPropagation()}>
               {(traces?.[a.agentId]?.length ?? 0) === 0
                 ? <div className="muted">暂无上报</div>
                 : traces![a.agentId].map((t, i) => (

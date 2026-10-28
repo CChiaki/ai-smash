@@ -2,6 +2,14 @@
 
 本项目的显著变更记录于此。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本遵循 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [2.1.0] - 2026-10-28
+
+### 新增
+- **Agent trace**：SDK `helpers.trace(kind, text)` 上报思考摘要（thought）/工具调用（tool）；直播间 Agent 面板点击展开查看；live-only 不落库（单 event ≤20 条）
+- **「被点名」徽章**：被 @ 定向派发期间的 Agent 在面板显示点名状态
+
+[2.1.0]: https://github.com/CChiaki/ai-smash/releases/tag/v2.1.0
+
 ## [2.0.0] - 2026-10-28
 
 ### 新增

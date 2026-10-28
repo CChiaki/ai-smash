@@ -23,6 +23,9 @@ describe('AgentPanel traces 与徽章（2.2）', () => {
     fireEvent.click(screen.getByText('小豆'));
     expect(screen.getByText('先想')).toBeTruthy();
     expect(screen.getByText('search()')).toBeTruthy();
+    // 面板内点击不冒泡到行，保持展开
+    fireEvent.click(screen.getByText('search()').closest('.agent-traces') as HTMLElement);
+    expect(screen.getByText('search()')).toBeTruthy();
   });
   it('无 traces 的 Agent 展开显示空态', () => {
     render(<AgentPanel agents={agents as any} traces={{}} />);
