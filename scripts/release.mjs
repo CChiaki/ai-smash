@@ -41,9 +41,9 @@ function stagePackage(name, versions) {
   }
   const pub = pkg.publishConfig ?? {};
   delete pkg.publishConfig;
-  if (pub.exports) pkg.exports = pub.exports;
-  if (pub.main) pkg.main = pub.main;
-  if (pub.types) pkg.types = pub.types;
+  for (const key of ['exports', 'main', 'types', 'access', 'bin', 'directories']) {
+    if (pub[key] !== undefined) pkg[key] = pub[key];
+  }
   delete pkg.scripts;
   delete pkg.devDependencies;
   writeFileSync(join(outDir, 'package.json'), JSON.stringify(pkg, null, 2) + '\n');
