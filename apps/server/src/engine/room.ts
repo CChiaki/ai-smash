@@ -121,6 +121,8 @@ export class RoomEngine {
         agentId: ra.agentId,
         name: agent.name,
         status,
+        ...(ra.status !== 'waiting' && this.inflight.has(this.key(roomId, ra.agentId))
+          && this.runtime.get(this.key(roomId, ra.agentId))?.mentionActive ? { mentioned: true } : {}),
         latencyMs: this.deps.storage.lastPostedLatency(ra.agentId),
         score: score ? { total: score.total, tier: score.tier } : null,
       };
@@ -174,6 +176,17 @@ export class RoomEngine {
     if (rt.deltaLen > 8000) return { ok: false };
     this.deps.bus.emit(Topics.postDelta, { roomId: found.roomId, agentId, delta });
     return { ok: true, roomId: found.roomId };
+  }
+
+  /** 2.2：Agent 上报思考/工具 trace——仅直播透传，不落库；单 event ≤20 条 */
+  agentTrace(agentId: string, eventId: string, kind: 'thought' | 'tool', text: string): boolean {
+    const found = this.findInflight(agentId, eventId);
+    if (!found) return false;
+    const rt = this.runtimeOf(found.roomId, agentId);
+    if (rt.traceCount >= 20) return false;
+    rt.traceCount += 1;
+    this.deps.bus.emit(Topics.trace, { roomId: found.roomId, agentId, kind, text });
+    return true;
   }
 
   // ---------- agent 发言 ----------
@@ -309,6 +322,8 @@ export class RoomEngine {
     };
     inflight.timer?.unref?.();
     this.runtimeOf(roomId, agentId).deltaLen = 0; // 每次派发重置累计
+    this.runtimeOf(roomId, agentId).traceCount = 0; // 2.2：每次派发重置 trace 计数
+    this.runtimeOf(roomId, agentId).mentionActive = Boolean(opts?.mentioned); // 2.2：@ 徽章随派发置位
     this.inflight.set(this.key(roomId, agentId), inflight);
     this.deps.bus.emit(Topics.eventDispatch, {
       eventId,
@@ -327,6 +342,7 @@ export class RoomEngine {
       context,
       deadlineAt: new Date(now + this.limits.deadlineMs).toISOString(),
     });
+    this.emitPresence(roomId); // 2.2：派发成功即推送 presence，徽章/状态实时可见
   }
 
   private buildContext(roomId: string): { messages: ChatMessage[]; truncated: boolean } {
@@ -399,6 +415,7 @@ export class RoomEngine {
       });
     }
     this.runtimeOf(roomId, agentId).deltaLen = 0;
+    this.runtimeOf(roomId, agentId).mentionActive = false; // 2.2：事件终态清除 @ 徽章
   }
 
   private afterEvent(roomId: string, agentId: string, spoke: boolean): void {
@@ -418,7 +435,7 @@ export class RoomEngine {
     const k = this.key(roomId, agentId);
     let rt = this.runtime.get(k);
     if (!rt) {
-      rt = { cooldownUntil: 0, consecutive: 0, posts: [], pendingMessageId: null, mentionBypass: false, deltaLen: 0 };
+      rt = { cooldownUntil: 0, consecutive: 0, posts: [], pendingMessageId: null, mentionBypass: false, mentionActive: false, traceCount: 0, deltaLen: 0 };
       this.runtime.set(k, rt);
     }
     return rt;
@@ -511,5 +528,7 @@ interface AgentRoomRuntime {
   posts: number[];
   pendingMessageId: string | null;
   mentionBypass: boolean;
+  mentionActive: boolean;
+  traceCount: number;
   deltaLen: number;
 }
