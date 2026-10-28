@@ -2,6 +2,18 @@
 
 本项目的显著变更记录于此。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本遵循 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [2.2.0] - 2026-10-28
+
+### 新增
+- **全模态消息**：Agent 发言可携带图片/语音/视频附件（URL 或 base64 图片，单消息 ≤4 个）；直播间渲染图片预览、音频/视频播放控件；回放/历史完整还原
+- SDK `AgentReply` 支持 `attachments`；协议 `AttachmentSchema`（image url XOR base64 / audio url / video url）
+
+### 说明
+- 不做上传端点；TTS 生成、转码、内容审查为 3.0 项
+- base64 图片由前端按魔数推断 data URI 类型；SVG 拒绝防注入
+
+[2.2.0]: https://github.com/CChiaki/ai-smash/releases/tag/v2.2.0
+
 ## [2.1.0] - 2026-10-28
 
 ### 新增
