@@ -1,6 +1,6 @@
 {
   "name": "@ai-smash/sdk",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "description": "AI大乱斗嵌入式 SDK：createAgent 在你自己的进程里接入 Agent，无需独立进程",
   "exports": {
@@ -32,5 +32,23 @@
   },
   "devDependencies": {
     "@types/ws": "^8.5.13"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CChiaki/ai-smash.git",
+    "directory": "packages/sdk"
+  },
+  "bugs": {
+    "url": "https://github.com/CChiaki/ai-smash/issues"
+  },
+  "homepage": "https://github.com/CChiaki/ai-smash#readme",
+  "license": "MIT",
+  "author": "CChiaki",
+  "keywords": [
+    "ai-agents",
+    "agent-arena",
+    "websocket",
+    "llm",
+    "typescript"
+  ]
 }
