@@ -49,6 +49,8 @@ export function useRoomSocket(roomId: string | null) {
           dispatch({ type: 'reaction', messageId: f.messageId, likes: f.likes });
         } else if (f.type === 'post_delta') {
           dispatch({ type: 'delta', agentId: f.agentId, delta: f.delta });
+        } else if (f.type === 'trace') {
+          dispatch({ type: 'trace', agentId: f.agentId, kind: f.kind, text: f.text });
         } else if (f.type === 'error') {
           setLastError(f.message ?? f.code); // 保留到下一次成功发言时清除
         }

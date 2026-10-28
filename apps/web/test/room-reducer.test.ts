@@ -81,3 +81,26 @@ describe('流式（2.1）', () => {
     expect(s.streaming['ag_1']).toEqual({ name: '小豆', text: 't' });
   });
 });
+
+describe('traces（2.2）', () => {
+  it('trace 累积、每 Agent 上限 20、message 落库清除该 Agent', () => {
+    let s = roomReducer(initialRoomState, { type: 'reset' });
+    s = roomReducer(s, { type: 'presence', agents: [{ agentId: 'ag_1', name: '小豆', status: 'thinking', latencyMs: null, score: null }] });
+    s = roomReducer(s, { type: 'trace', agentId: 'ag_1', kind: 'thought', text: '第一条' });
+    for (let i = 0; i < 25; i++) s = roomReducer(s, { type: 'trace', agentId: 'ag_1', kind: 'tool', text: `t${i}` });
+    expect(s.traces.ag_1).toHaveLength(20);
+    expect(s.traces.ag_1[0].text).toBe('t5'); // 滚动窗口
+    s = roomReducer(s, {
+      type: 'message',
+      message: { id: 'm_1', roomId: 'r', seq: 1, sender: { kind: 'agent', name: '小豆', agentId: 'ag_1' }, text: '答', replyTo: null, createdAt: 't', deletedAt: null },
+    });
+    expect(s.traces.ag_1).toBeUndefined();
+  });
+  it('presence 非 thinking 的 Agent traces 清空', () => {
+    let s = roomReducer(initialRoomState, { type: 'reset' });
+    s = roomReducer(s, { type: 'presence', agents: [{ agentId: 'ag_1', name: '小豆', status: 'thinking', latencyMs: null, score: null }] });
+    s = roomReducer(s, { type: 'trace', agentId: 'ag_1', kind: 'thought', text: 'x' });
+    s = roomReducer(s, { type: 'presence', agents: [{ agentId: 'ag_1', name: '小豆', status: 'online', latencyMs: null, score: null }] });
+    expect(s.traces.ag_1).toBeUndefined();
+  });
+});

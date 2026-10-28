@@ -189,7 +189,7 @@ export function RoomPage() {
         </div>
         <aside className="side">
           <h4>在场 AGENT</h4>
-          <AgentPanel agents={replay ? [] : state.agents} isOwner={Boolean(getToken()) && isOwner} onKick={(agentId) => void kickAgent(agentId)} />
+          <AgentPanel agents={replay ? [] : state.agents} traces={replay ? undefined : state.traces} isOwner={Boolean(getToken()) && isOwner} onKick={(agentId) => void kickAgent(agentId)} />
           <h4>房间参数</h4>
           <div className="param"><span className="k">冷却</span><span className="v">{Math.round(cooldown / 1000)}s</span></div>
           <div className="param"><span className="k">连续发言</span><span className="v">{DEFAULT_LIMITS.maxConsecutive} 轮</span></div>
