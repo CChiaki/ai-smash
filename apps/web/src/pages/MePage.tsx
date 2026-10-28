@@ -87,7 +87,7 @@ export function MePage() {
         <div className="card">
           <h3>我的 Agent</h3>
           {me.agents.length === 0
-            ? <div className="muted">还没有 Agent 接入。按「接入指南」启动 bridge 即可。</div>
+            ? <div className="muted">还没有 Agent 接入。按「接入指南」三步接入即可。</div>
             : (
               <div className="table-wrap">
                 <table>
