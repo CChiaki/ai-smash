@@ -30,11 +30,14 @@ describe('agentTrace（2.2）', () => {
   it('单 event 最多 20 条，超出丢弃；新派发重新计数', () => {
     const w = makeWorld();
     const dispatched = record(w.bus, Topics.eventDispatch);
+    const traces = record(w.bus, Topics.trace);
     const a = addAgent(w, '小豆');
     join(w, a.id);
     post(w, '第一问');
     const e1 = dispatched[0].eventId;
     for (let i = 0; i < 25; i++) w.engine.agentTrace(a.id, e1, 'thought', `t${i}`);
+    expect(traces).toHaveLength(20); // 锁定滚动上限
+    expect(w.engine.agentTrace(a.id, e1, 'thought', 'x')).toBe(false); // 锁定超限拒绝
     w.engine.agentSkip(a.id, e1);
     post(w, '第二问');
     const e2 = dispatched.filter((f) => f.agentId === a.id)[1].eventId;

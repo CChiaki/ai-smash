@@ -91,6 +91,10 @@ export const RejectReasonSchema = z.enum([
   'stale', 'invalid', 'throttled', 'paused', 'kicked', 'forbidden', 'room_full', 'archived',
 ]);
 
+// trace 类别（2.2）：AgentClient / HumanServer trace 帧的 kind 共用此字面量类型
+// （schema 侧保持 z.enum(['thought', 'tool']) 字面量，未引用本类型，勿单边漂移）
+export type TraceKind = 'thought' | 'tool';
+
 export const AgentClientSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('hello'),
@@ -121,7 +125,7 @@ export const AgentClientSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('trace'),
     eventId: z.string().min(1),
-    kind: z.enum(['thought', 'tool']),
+    kind: z.enum(['thought', 'tool']), // = TraceKind
     text: z.string().min(1).max(2000),
   }),
   z.object({ type: z.literal('ping'), t: z.number() }),
@@ -226,7 +230,7 @@ export const HumanServerSchema = z.discriminatedUnion('type', [
     type: z.literal('trace'),
     agentId: z.string(),
     roomId: z.string(),
-    kind: z.enum(['thought', 'tool']),
+    kind: z.enum(['thought', 'tool']), // = TraceKind
     text: z.string(),
   }),
   z.object({ type: z.literal('pong'), t: z.number() }),

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { AgentPresence } from '@ai-smash/protocol';
+import type { AgentPresence, TraceKind } from '@ai-smash/protocol';
 import { TIER_LABEL } from './Leaderboard.js';
 
 const STATUS_LABEL: Record<string, string> = {
@@ -10,7 +10,7 @@ const STATUS_LABEL: Record<string, string> = {
 // 点击行展开该 Agent 的 trace 面板（2.2）：traces 由 RoomState 持有，回放模式不传（暂无上报空态）
 export function AgentPanel({ agents, traces, isOwner, onKick }: {
   agents: AgentPresence[];
-  traces?: Record<string, Array<{ kind: string; text: string }>>;
+  traces?: Record<string, Array<{ kind: TraceKind; text: string }>>;
   isOwner?: boolean;
   onKick?: (agentId: string) => void;
 }) {
@@ -23,7 +23,15 @@ export function AgentPanel({ agents, traces, isOwner, onKick }: {
           key={a.agentId}
           className="agent"
           title={a.score ? TIER_LABEL[a.score.tier] ?? a.score.tier : undefined}
+          role="button"
+          tabIndex={0}
           onClick={() => setExpanded(expanded === a.agentId ? null : a.agentId)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setExpanded(expanded === a.agentId ? null : a.agentId);
+            }
+          }}
         >
           <span className={`st ${a.status}`}></span>
           <span className="name">{a.name}</span>
@@ -32,7 +40,17 @@ export function AgentPanel({ agents, traces, isOwner, onKick }: {
           <span className="read">
             {a.score ? a.score.total : '—'}{a.latencyMs !== null && a.latencyMs !== undefined ? ` · ${a.latencyMs}ms` : ''}
           </span>
-          {isOwner && onKick && <button className="btn sm danger" onClick={() => onKick(a.agentId)}>踢出</button>}
+          {isOwner && onKick && (
+            <button
+              className="btn sm danger"
+              onClick={(e) => {
+                e.stopPropagation();
+                onKick(a.agentId);
+              }}
+            >
+              踢出
+            </button>
+          )}
           {expanded === a.agentId && (
             <div className="agent-traces" onClick={(e) => e.stopPropagation()}>
               {(traces?.[a.agentId]?.length ?? 0) === 0

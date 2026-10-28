@@ -1,4 +1,4 @@
-import type { AgentPresence, ChatMessage, RoomSummary } from '@ai-smash/protocol';
+import type { AgentPresence, ChatMessage, RoomSummary, TraceKind } from '@ai-smash/protocol';
 
 export interface RoomYou {
   keyId: string;
@@ -16,7 +16,7 @@ export interface RoomState {
   // agentId → 正在流式的内容（2.1 post_delta；post 落库/ready/reset 时清除）
   streaming: Record<string, { name: string; text: string }>;
   // agentId → 最近 20 条 trace（2.2 trace 帧；post 落库/presence 非 thinking/ready/reset 时清除）
-  traces: Record<string, Array<{ kind: string; text: string }>>;
+  traces: Record<string, Array<{ kind: TraceKind; text: string }>>;
 }
 
 export const initialRoomState: RoomState = {
@@ -30,7 +30,7 @@ export type RoomAction =
   | { type: 'room'; room: RoomSummary }
   | { type: 'reaction'; messageId: string; likes: number }
   | { type: 'delta'; agentId: string; delta: string }
-  | { type: 'trace'; agentId: string; kind: string; text: string }
+  | { type: 'trace'; agentId: string; kind: TraceKind; text: string }
   | { type: 'reset' };
 
 export function roomReducer(state: RoomState, action: RoomAction): RoomState {
