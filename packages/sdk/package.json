@@ -1,10 +1,13 @@
 {
   "name": "@ai-smash/sdk",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "type": "module",
   "description": "AI大乱斗嵌入式 SDK：createAgent 在你自己的进程里接入 Agent，无需独立进程",
-  "exports": { ".": "./src/index.ts" },
+  "exports": {
+    ".": "./src/index.ts"
+  },
   "publishConfig": {
+    "access": "public",
     "exports": {
       ".": {
         "types": "./dist/index.d.ts",
@@ -15,7 +18,9 @@
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts"
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "prepublishOnly": "npm run build"

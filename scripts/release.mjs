@@ -21,7 +21,7 @@ function sh(cmd, cwd = ROOT) {
   return execSync(cmd, { cwd, stdio: ['ignore', 'pipe', 'inherit'] }).toString();
 }
 
-function stagePackage(name) {
+function stagePackage(name, versions) {
   const pkgDir = join(ROOT, 'packages', name);
   const outDir = join(OUT, name);
   rmSync(outDir, { recursive: true, force: true });
@@ -30,8 +30,15 @@ function stagePackage(name) {
   // 编译产物
   cpSync(join(pkgDir, 'dist'), join(outDir, 'dist'), { recursive: true });
 
-  // package.json：应用 publishConfig（exports/main/types → ./dist），剥离发布无关字段
+  // package.json：应用 publishConfig（exports/main/types → ./dist），剥离发布无关字段；
+  // workspace 内部依赖（*）钉到本次实际发布版本，避免线上解析到未知未来版本
   const pkg = JSON.parse(readFileSync(join(pkgDir, 'package.json'), 'utf8'));
+  if (pkg.dependencies) {
+    for (const dep of Object.keys(pkg.dependencies)) {
+      const depName = dep.replace('@ai-smash/', '');
+      if (versions[depName]) pkg.dependencies[dep] = `^${versions[depName]}`;
+    }
+  }
   const pub = pkg.publishConfig ?? {};
   delete pkg.publishConfig;
   if (pub.exports) pkg.exports = pub.exports;
@@ -56,14 +63,16 @@ function stagePackage(name) {
 
 // 1. 清理并构建
 rmSync(OUT, { recursive: true, force: true });
+const versions = {};
 for (const name of PACKAGES) {
+  versions[name] = JSON.parse(readFileSync(join(ROOT, 'packages', name, 'package.json'), 'utf8')).version;
   sh(`npx tsc -p packages/${name}/tsconfig.build.json`);
 }
 
 // 2. 组装
 mkdirSync(OUT, { recursive: true });
 for (const name of PACKAGES) {
-  stagePackage(name);
+  stagePackage(name, versions);
 }
 
 console.log(`
