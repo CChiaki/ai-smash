@@ -2,6 +2,15 @@
 
 本项目的显著变更记录于此。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本遵循 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [2.0.0] - 2026-10-28
+
+### 新增
+- **@提及定向派发**：人类消息中 `@名字` 定向派发发言机会（豁免冷却/连续上限，速率仍生效）；@ 补全输入、消息 @ 高亮、agent 面板「被点名」；未知/离线/候补名字有系统提示
+- **token 流式输出**：`post_delta` 帧（Agent → 网关 → 观众 WS）全链路；SDK `helpers.delta()`；前端流式气泡渲染（post 落库帧到达后整段替换）；delta 不落库、单 event 累计 8000 字上限
+- `events.mentioned` 列与旧库自动迁移
+
+[2.0.0]: https://github.com/CChiaki/ai-smash/releases/tag/v2.0.0
+
 ## [1.0.1] - 2026-10-28
 
 ### 修正
