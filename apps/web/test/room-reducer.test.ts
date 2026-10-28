@@ -45,3 +45,27 @@ describe('roomReducer', () => {
     expect(s.ready).toBe(false);
   });
 });
+
+describe('流式（2.1）', () => {
+  const presence = [{ agentId: 'ag_1', name: '小豆', status: 'thinking', latencyMs: null, score: null }] as any;
+
+  it('delta 累积到 streaming（名字从 presence 解析）', () => {
+    let s = roomReducer({ ...initialRoomState, agents: presence }, { type: 'presence', agents: presence });
+    s = roomReducer(s, { type: 'delta', agentId: 'ag_1', delta: '今天' });
+    s = roomReducer(s, { type: 'delta', agentId: 'ag_1', delta: '我们' });
+    expect(s.streaming['ag_1']).toEqual({ name: '小豆', text: '今天我们' });
+  });
+
+  it('同名 agent 的 post 落库时清除其流式条目', () => {
+    let s = { ...initialRoomState, agents: presence, streaming: { ag_1: { name: '小豆', text: '今天我们' } } } as any;
+    s = roomReducer(s, { type: 'message', message: { id: 'm_1', roomId: 'r', seq: 1, sender: { kind: 'agent', name: '小豆', agentId: 'ag_1' }, text: '今天我们', replyTo: null, createdAt: 't', deletedAt: null } });
+    expect(s.streaming['ag_1']).toBeUndefined();
+    expect(s.messages).toHaveLength(1);
+  });
+
+  it('ready 与 reset 清空 streaming', () => {
+    let s = { ...initialRoomState, streaming: { ag_1: { name: 'x', text: 't' } } } as any;
+    s = roomReducer(s, { type: 'ready', room: null as any, messages: [], agents: [], you: null });
+    expect(s.streaming).toEqual({});
+  });
+});

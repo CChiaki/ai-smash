@@ -162,7 +162,7 @@ export function RoomPage() {
           <div className="stream">
             {replay && historyError
               ? <div className="error-text">{historyError}</div>
-              : <ChatStream messages={messages} likes={state.likes} onLike={(mid) => void like(mid)} canLike={Boolean(getToken())} />}
+              : <ChatStream messages={messages} likes={state.likes} onLike={(mid) => void like(mid)} canLike={Boolean(getToken())} streaming={replay ? undefined : state.streaming} />}
           </div>
           {!replay && (sendError || lastError) && (
             <div className="stream-errors">

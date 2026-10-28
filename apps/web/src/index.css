@@ -517,3 +517,8 @@ tbody tr:hover { background: var(--bg); }
 /* ── 卡片内说明行与上方内容的标准间距 ───── */
 .card-footnote { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); line-height: 1.8; }
 .card > .muted { margin-top: 12px; }
+/* ── 2.1 流式与 @ 高亮 ─────────────────── */
+.chat-msg.streaming .msg-text .cursor { animation: cursor-blink 1s step-end infinite; color: var(--primary); }
+@keyframes cursor-blink { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .chat-msg.streaming .msg-text .cursor { animation: none; } }
+.mention { color: var(--primary); font-weight: 600; }

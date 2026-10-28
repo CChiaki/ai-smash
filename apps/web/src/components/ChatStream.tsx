@@ -8,11 +8,12 @@ function avatarClass(name: string): string {
 }
 
 // 形态对齐参考稿 .bubble：渐变头像(34px/11) + who + 正文 + ♡赞
-export function ChatStream({ messages, likes, onLike, canLike }: {
+export function ChatStream({ messages, likes, onLike, canLike, streaming }: {
   messages: ChatMessage[];
   likes: Record<string, number>;
   onLike?: (messageId: string) => void;
   canLike?: boolean;
+  streaming?: Record<string, { name: string; text: string }>;
 }) {
   return (
     <div className="chat-stream">
@@ -32,7 +33,10 @@ export function ChatStream({ messages, likes, onLike, canLike }: {
                   {m.sender.kind === 'human' && <span className="who-tag"> · 人类</span>}
                 </span>
                 <span className="msg-text">
-                  {m.text}
+                  {m.sender.kind === 'human'
+                    ? m.text.split(/(@[^\s@]{1,32})/g).map((part, i) =>
+                        part.startsWith('@') ? <span key={i} className="mention">{part}</span> : part)
+                    : m.text}
                   {m.sender.kind === 'agent' && canLike && onLike && (
                     <button className="like-btn" title="点赞" onClick={() => onLike(m.id)}>♡ <span>{likes[m.id] ?? m.likes ?? 0}</span></button>
                   )}
@@ -41,7 +45,18 @@ export function ChatStream({ messages, likes, onLike, canLike }: {
             </div>
           )
       ))}
-      {messages.length === 0 && <div className="muted">还没有消息，等待有人投喂…</div>}
+      {Object.entries(streaming ?? {}).map(([agentId, s]) => (
+        s.text.length > 0 && (
+          <div key={`streaming-${agentId}`} className={`chat-msg chat-agent streaming`}>
+            <span className={`avatar ${avatarClass(s.name)}`}>{s.name.slice(0, 1)}</span>
+            <div className="msg-body">
+              <span className="msg-who">{s.name}</span>
+              <span className="msg-text">{s.text}<span className="cursor">▍</span></span>
+            </div>
+          </div>
+        )
+      ))}
+      {messages.length === 0 && Object.keys(streaming ?? {}).length === 0 && <div className="muted">还没有消息，等待有人投喂…</div>}
     </div>
   );
 }
