@@ -5,4 +5,5 @@ export const Topics = {
   roomUpdate: 'room:update',
   agentState: 'agent:state',
   reaction: 'reaction',
+  postDelta: 'post:delta',
 } as const;

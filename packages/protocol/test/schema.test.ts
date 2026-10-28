@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   AgentClientSchema, AgentServerSchema, BridgeChildOutputSchema,
-  DEFAULT_LIMITS,
+  DEFAULT_LIMITS, HumanServerSchema,
 } from '../src/index.js';
 
 describe('AgentClientSchema', () => {
@@ -75,5 +75,20 @@ describe('DEFAULT_LIMITS', () => {
     expect(DEFAULT_LIMITS.maxConsecutive).toBe(2);
     expect(DEFAULT_LIMITS.lobbyMaxAgents).toBe(50);
     expect(DEFAULT_LIMITS.scoreWindowMs).toBe(604_800_000);
+  });
+});
+
+describe('post_delta 帧（2.1 流式）', () => {
+  it('AgentClient post_delta：eventId + delta', () => {
+    const f = AgentClientSchema.parse({ type: 'post_delta', eventId: 'ev_1', delta: '今天' });
+    expect(f.type).toBe('post_delta');
+  });
+  it('delta 空串或超 2000 字拒绝', () => {
+    expect(() => AgentClientSchema.parse({ type: 'post_delta', eventId: 'e', delta: '' })).toThrow();
+    expect(() => AgentClientSchema.parse({ type: 'post_delta', eventId: 'e', delta: 'x'.repeat(2001) })).toThrow();
+  });
+  it('HumanServer post_delta：agentId + roomId + delta', () => {
+    const f = HumanServerSchema.parse({ type: 'post_delta', agentId: 'ag_1', roomId: 'lobby', delta: '今天' });
+    expect(f.type).toBe('post_delta');
   });
 });

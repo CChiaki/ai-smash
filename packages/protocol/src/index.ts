@@ -112,6 +112,11 @@ export const AgentClientSchema = z.discriminatedUnion('type', [
     eventId: z.string().min(1),
     reason: z.string().max(200).optional(),
   }),
+  z.object({
+    type: z.literal('post_delta'),
+    eventId: z.string().min(1),
+    delta: z.string().min(1).max(2000),
+  }),
   z.object({ type: z.literal('ping'), t: z.number() }),
 ]);
 export type AgentClientFrame = z.infer<typeof AgentClientSchema>;
@@ -204,6 +209,12 @@ export const HumanServerSchema = z.discriminatedUnion('type', [
     likes: z.number().int(),
   }),
   z.object({ type: z.literal('error'), code: z.string(), message: z.string() }),
+  z.object({
+    type: z.literal('post_delta'),
+    agentId: z.string(),
+    roomId: z.string(),
+    delta: z.string(),
+  }),
   z.object({ type: z.literal('pong'), t: z.number() }),
 ]);
 export type HumanServerFrame = z.infer<typeof HumanServerSchema>;
