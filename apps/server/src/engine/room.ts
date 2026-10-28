@@ -234,11 +234,30 @@ export class RoomEngine {
     const context = this.buildContext(roomId);
     for (const ra of this.deps.storage.listRoomAgents(roomId)) {
       if (ra.status !== 'active') continue;
+      if (message.sender.agentId && message.sender.agentId === ra.agentId) continue; // 自我回声硬禁
       const k = this.key(roomId, ra.agentId);
       if (this.inflight.has(k)) {
         // 覆写 pending 的同时清掉 mentionBypass：新 pending 是普通消息，不得继承 @ 豁免
         this.runtimeOf(roomId, ra.agentId).pendingMessageId = message.id;
         this.runtimeOf(roomId, ra.agentId).mentionBypass = false;
+        continue;
+      }
+      const rt = this.runtimeOf(roomId, ra.agentId);
+      if (rt.cooldownUntil > Date.now()) {
+        // 冷却排队：追问不丢，到期自动补派（多条只留最新）
+        rt.pendingMessageId = message.id;
+        if (!rt.cooldownTimer) {
+          const delay = Math.max(50, rt.cooldownUntil - Date.now());
+          rt.cooldownTimer = setTimeout(() => {
+            rt.cooldownTimer = null;
+            const pending = rt.pendingMessageId;
+            rt.pendingMessageId = null;
+            if (pending && this.canDispatch(roomId, ra.agentId)) {
+              this.dispatchToAgent(roomId, ra.agentId, pending, this.buildContext(roomId));
+            }
+          }, delay);
+          rt.cooldownTimer.unref?.();
+        }
         continue;
       }
       if (!this.canDispatch(roomId, ra.agentId)) continue;
@@ -326,6 +345,7 @@ export class RoomEngine {
     this.runtimeOf(roomId, agentId).deltaLen = 0; // 每次派发重置累计
     this.runtimeOf(roomId, agentId).traceCount = 0; // 2.2：每次派发重置 trace 计数
     this.runtimeOf(roomId, agentId).mentionActive = Boolean(opts?.mentioned); // 2.2：@ 徽章随派发置位
+    this.clearCooldownTimer(roomId, agentId); // 冷却排队定时器作废：真实派发已建立
     this.inflight.set(this.key(roomId, agentId), inflight);
     this.deps.bus.emit(Topics.eventDispatch, {
       eventId,
@@ -431,6 +451,15 @@ export class RoomEngine {
     }
     this.runtimeOf(roomId, agentId).deltaLen = 0;
     this.runtimeOf(roomId, agentId).mentionActive = false; // 2.2：事件终态清除 @ 徽章
+    this.clearCooldownTimer(roomId, agentId); // 防止排队定时器在事件终态后空转
+  }
+
+  private clearCooldownTimer(roomId: string, agentId: string): void {
+    const rt = this.runtimeOf(roomId, agentId);
+    if (rt.cooldownTimer) {
+      clearTimeout(rt.cooldownTimer);
+      rt.cooldownTimer = null;
+    }
   }
 
   private afterEvent(roomId: string, agentId: string, spoke: boolean): void {
@@ -450,7 +479,7 @@ export class RoomEngine {
     const k = this.key(roomId, agentId);
     let rt = this.runtime.get(k);
     if (!rt) {
-      rt = { cooldownUntil: 0, consecutive: 0, posts: [], pendingMessageId: null, mentionBypass: false, mentionActive: false, traceCount: 0, deltaLen: 0 };
+      rt = { cooldownUntil: 0, consecutive: 0, posts: [], pendingMessageId: null, mentionBypass: false, mentionActive: false, traceCount: 0, deltaLen: 0, cooldownTimer: null };
       this.runtime.set(k, rt);
     }
     return rt;
@@ -546,4 +575,5 @@ interface AgentRoomRuntime {
   mentionActive: boolean;
   traceCount: number;
   deltaLen: number;
+  cooldownTimer: ReturnType<typeof setTimeout> | null;
 }

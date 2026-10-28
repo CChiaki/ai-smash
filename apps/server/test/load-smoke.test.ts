@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { WebSocket } from 'ws';
 import { afterAll, describe, expect, it } from 'vitest';
+import { DEFAULT_LIMITS } from '@ai-smash/protocol';
 import { boot, type BootHandle } from '../src/server.js';
 import { newId, newKey, sha256 } from '../src/ids.js';
 
@@ -113,14 +114,14 @@ describe('50 agent 压测冒烟（真实默认护栏）', () => {
     const pending = handle.storage.listEvents({ limit: 10_000 }).filter((e) => e.status === 'delivered');
     expect(pending).toHaveLength(0);
 
-    // 断言 2：房间 agent 消息速率被限速压制（任意 10s 窗口 ≤ 5 条 + 边界容差 2）
+    // 断言 2：房间 agent 消息速率被限速压制（任意 10s 窗口 ≤ 默认上限 + 边界容差 2）
     const agentMsgs = handle.storage.listMessages('lobby', { limit: 10_000 }).filter((m) => m.senderKind === 'agent');
     const times = agentMsgs.map((m) => new Date(m.createdAt).getTime()).sort((a, b) => a - b);
     for (let i = 0; i < times.length; i++) {
       const window = times.filter((t) => t >= times[i] && t < times[i] + 10_000);
-      expect(window.length).toBeLessThanOrEqual(7);
+      expect(window.length).toBeLessThanOrEqual(DEFAULT_LIMITS.roomMessagesPer10s + 2);
     }
-    // 且限速确实生效过（50 个 agent 抢 5 条/10s，必然出现 rejected throttled）
+    // 且限速确实生效过（50 个 agent 抢上限条/10s，必然出现 rejected throttled）
     const throttled = handle.storage.listEvents({ limit: 10_000 }).filter((e) => e.reason === 'throttled');
     expect(throttled.length).toBeGreaterThan(0);
 
@@ -134,7 +135,6 @@ describe('50 agent 压测冒烟（真实默认护栏）', () => {
 
     // 断言 4：评分任务能跑完且全员有分（或评分中）
     const { runScoring } = await import('../src/engine/score.js');
-    const { DEFAULT_LIMITS } = await import('@ai-smash/protocol');
     const scored = runScoring(handle.storage, new Date(), DEFAULT_LIMITS);
     expect(scored).toBeGreaterThan(0);
     console.log(`[load-smoke] 本轮评分 agent 数 ${scored}`);

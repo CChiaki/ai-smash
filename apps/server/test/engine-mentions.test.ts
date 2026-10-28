@@ -118,7 +118,7 @@ describe('@提及定向派发', () => {
 
   it('速率受限导致 mention-pending 丢弃时，bypass 不残留到下一轮普通派发', () => {
     vi.setSystemTime(t0());
-    const w = makeWorld({ cooldownMs: 60_000, roomMessagesPer10s: 50 } as any);
+    const w = makeWorld({ cooldownMs: 60_000, roomMessagesPer10s: 50, agentPerMinute: 6 } as any); // 2.3 默认 30，显式收紧保持原「速率受限」语义
     const a = addAgent(w, '小豆');
     join(w, a.id);
     const frames = recordDispatch(w);

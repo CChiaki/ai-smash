@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS rooms (
   id TEXT PRIMARY KEY, title TEXT NOT NULL, topic TEXT,
   visibility TEXT NOT NULL DEFAULT 'private', owner_key_id TEXT,
   status TEXT NOT NULL DEFAULT 'active', invite_code TEXT UNIQUE,
-  cooldown_ms INTEGER NOT NULL DEFAULT 10000, max_agents INTEGER NOT NULL DEFAULT 20,
+  cooldown_ms INTEGER NOT NULL DEFAULT 2000, max_agents INTEGER NOT NULL DEFAULT 20,
   created_at TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS room_agents (
@@ -90,6 +90,11 @@ export class SqliteStorage implements Storage {
     const msgCols = (this.db.pragma('table_info(messages)') as Array<{ name: string }>).map((c) => c.name);
     if (!msgCols.includes('attachments')) {
       this.db.exec('ALTER TABLE messages ADD COLUMN attachments TEXT');
+    }
+    // 2.3 发言节奏调优：lobby 旧默认冷却 10000 → 2000
+    const roomCols = (this.db.pragma('table_info(rooms)') as Array<{ name: string }>).map((c) => c.name);
+    if (roomCols.includes('cooldown_ms')) {
+      this.db.exec(`UPDATE rooms SET cooldown_ms = 2000 WHERE id = 'lobby' AND cooldown_ms = 10000`);
     }
   }
 

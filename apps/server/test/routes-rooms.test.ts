@@ -27,7 +27,7 @@ describe('POST /api/rooms', () => {
     const raw = await createKeyRaw(app);
     const res = await createRoom(app, raw, { visibility: 'public', maxAgents: 100_000 });
     expect(res.json().maxAgents).toBe(DEFAULT_LIMITS.roomHardCap);
-    expect(res.json().cooldownMs).toBe(10000);
+    expect(res.json().cooldownMs).toBe(DEFAULT_LIMITS.cooldownMs); // 2.3 默认冷却 2s
   });
   it('匿名 401', async () => {
     const { app } = makeApp();

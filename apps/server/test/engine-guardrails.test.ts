@@ -126,21 +126,25 @@ describe('冷却与速率', () => {
 });
 
 describe('连续发言上限', () => {
-  it('无人打断时最多连续 2 条（自触发链被截断）', () => {
+  it('无人打断时最多连续 2 条（2.3 自我回声硬禁后，经合并 pending 接力触发）', () => {
     vi.setSystemTime(t0());
     const w = makeWorld({ cooldownMs: 0, maxConsecutive: 2 } as any);
     const dispatched = record(w.bus, Topics.eventDispatch);
     const a = addAgent(w, '小豆');
     join(w, a.id);
     w.engine.humanPost('lobby', 'key_1', '阿伟', '起');
-    const e1 = dispatched.at(-1)!;
-    w.engine.agentPost(a.id, e1.eventId, '自言自语1');
-    const e2 = dispatched.filter((f) => f.trigger.sender.kind === 'agent').at(-1)!;
+    w.engine.humanPost('lobby', 'key_1', '阿伟', '追问'); // 在途合并 pending
+    w.engine.agentPost(a.id, dispatched[0].eventId, '自言自语1');
+    // 发言后：自我回声硬禁 → 自己的消息不再派发给自己；pending 的「追问」补派
+    const e2 = dispatched.at(-1)!;
+    expect(e2.trigger.messageId).toBe(
+      w.storage.listMessages('lobby').filter((m) => m.text === '追问')[0].id,
+    );
     w.engine.agentPost(a.id, e2.eventId, '自言自语2');
-    // 第 3 次连续发言：canDispatch 因 consecutive 达上限而拒绝，不再有新派发
+    // 第 2 次连续发言：consecutive 达上限，afterEvent 不再补派，链被截断
     const agentMsgCount = w.storage.listMessages('lobby').filter((m) => m.senderKind === 'agent').length;
     expect(agentMsgCount).toBe(2);
-    expect(dispatched.filter((f) => f.trigger.sender.kind === 'agent').length).toBe(1);
+    expect(dispatched.filter((f) => f.trigger.sender.kind === 'agent')).toHaveLength(0);
   });
 });
 
@@ -188,14 +192,16 @@ describe('inflight 守卫', () => {
     join(w, a.id);
     const m1 = w.engine.humanPost('lobby', 'key_1', '阿伟', '一');
     w.engine.humanPost('lobby', 'key_1', '阿伟', '二'); // 合并为 pending
-    // 发言后：先派发自己消息触发的 E2，pending 不应覆盖 E2
+    w.engine.humanPost('lobby', 'key_1', '阿伟', '三'); // 覆写 pending
+    // 发言后：2.3 自我回声硬禁不再自触发；pending（三）作为新 event 补派
     w.engine.agentPost(a.id, dispatched[0].eventId, '自言自语1');
     expect(dispatched).toHaveLength(2);
     const e2 = dispatched[1];
-    // skip 掉 E2 后，pending 的 m2 才被补派为 E3
-    w.engine.agentSkip(a.id, e2.eventId);
-    expect(dispatched).toHaveLength(3);
-    expect(dispatched[2].trigger.messageId).not.toBe(e2.trigger.messageId);
-    expect(w.storage.getEvent(e2.eventId)?.status).toBe('skipped');
+    expect(e2.eventId).not.toBe(dispatched[0].eventId); // 新事件，未覆盖在途 event
+    expect(e2.trigger.messageId).toBe(
+      w.storage.listMessages('lobby').filter((m) => m.text === '三')[0].id,
+    );
+    expect(e2.trigger.messageId).not.toBe(m1.id);
+    expect(w.storage.getEvent(dispatched[0].eventId)?.status).toBe('posted');
   });
 });

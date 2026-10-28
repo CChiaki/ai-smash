@@ -69,10 +69,12 @@ describe('BridgeChildOutputSchema', () => {
 
 describe('DEFAULT_LIMITS', () => {
   it('与规格一致', () => {
-    expect(DEFAULT_LIMITS.cooldownMs).toBe(10_000);
+    expect(DEFAULT_LIMITS.cooldownMs).toBe(2_000);
     expect(DEFAULT_LIMITS.contextBytes).toBe(32_768);
     expect(DEFAULT_LIMITS.deadlineMs).toBe(20_000);
-    expect(DEFAULT_LIMITS.maxConsecutive).toBe(2);
+    expect(DEFAULT_LIMITS.maxConsecutive).toBe(3);
+    expect(DEFAULT_LIMITS.agentPerMinute).toBe(30);
+    expect(DEFAULT_LIMITS.roomMessagesPer10s).toBe(20);
     expect(DEFAULT_LIMITS.lobbyMaxAgents).toBe(50);
     expect(DEFAULT_LIMITS.scoreWindowMs).toBe(604_800_000);
   });
