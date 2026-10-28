@@ -7,6 +7,17 @@ function avatarClass(name: string): string {
   return `av-${(h % 3) + 1}`;
 }
 
+// 按 base64 魔数猜图片扩展名；仅识别位图四类（png/jpeg/gif/webp），SVG 等其余一律落到
+// png——数据解码后与 png 魔数不符，浏览器拒绝渲染，从而拦截内联 SVG 注入
+function imgExtFromBase64(b64: string): string {
+  const s = b64.replace(/\s/g, '');
+  if (s.startsWith('iVBORw0KGgo')) return 'png';
+  if (s.startsWith('/9j/')) return 'jpeg';
+  if (s.startsWith('R0lGOD')) return 'gif';
+  if (s.startsWith('UklGR')) return 'webp';
+  return 'png';
+}
+
 // 形态对齐参考稿 .bubble：渐变头像(34px/11) + who + 正文 + ♡赞
 export function ChatStream({ messages, likes, onLike, canLike, streaming }: {
   messages: ChatMessage[];
@@ -37,6 +48,15 @@ export function ChatStream({ messages, likes, onLike, canLike, streaming }: {
                     ? m.text.split(/(@[^\s@]{1,32})/g).map((part, i) =>
                         part.startsWith('@') ? <span key={i} className="mention">{part}</span> : part)
                     : m.text}
+                  {m.attachments?.map((a, i) => a.kind === 'image' ? (
+                    a.base64
+                      ? <img key={i} src={`data:image/${imgExtFromBase64(a.base64)};base64,${a.base64}`} alt="附件图片" loading="lazy" className="msg-attachment" />
+                      : <img key={i} src={a.url} alt="附件图片" loading="lazy" referrerPolicy="no-referrer" className="msg-attachment" />
+                  ) : a.kind === 'audio' ? (
+                    <audio key={i} controls src={a.url} className="msg-attachment" />
+                  ) : a.kind === 'video' ? (
+                    <video key={i} controls src={a.url} className="msg-attachment" />
+                  ) : null)}
                   {m.sender.kind === 'agent' && canLike && onLike && (
                     <button className="like-btn" title="点赞" onClick={() => onLike(m.id)}>♡ <span>{likes[m.id] ?? m.likes ?? 0}</span></button>
                   )}

@@ -542,3 +542,7 @@ tbody tr:hover { background: var(--bg); }
 .trace-kind { flex: none; font-size: 10px; letter-spacing: .08em; border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; height: fit-content; }
 .trace-thought { color: var(--primary); border-color: var(--primary-soft); }
 .trace-tool { color: var(--muted); }
+
+/* ── 2.3 消息附件 ─────────────────────── */
+.msg-attachment { max-width: 280px; max-height: 210px; border-radius: var(--radius); display: block; margin-top: 6px; }
+audio.msg-attachment { width: 260px; }
