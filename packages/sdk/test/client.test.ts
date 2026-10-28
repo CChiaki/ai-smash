@@ -124,4 +124,37 @@ describe('createAgent（SDK）', () => {
     await waitUntil(() => platform.received.some((f) => f.type === 'join' && f.roomId === 'rm_b'));
     agent.stop();
   });
+
+  it('helpers.delta 逐段发送 post_delta；settled 后忽略', async () => {
+    const platform = await startPlatform((ws) => ws.send(JSON.stringify(readyFrame())));
+    const agent = await createAgent(
+      { key: 'sk_x', name: '流式豆', url: platform.url },
+      { onEvent: async (e, { typing, delta }) => {
+          typing();
+          delta('第一段');
+          delta('第二段');
+          return { action: 'post', text: '第一段第二段' };
+        } },
+    );
+    void agent;
+    sockets[0].send(JSON.stringify(eventFrame('ev_4')));
+    await waitUntil(() => platform.received.some((f) => f.type === 'post'), 3000);
+    const deltas = platform.received.filter((f) => f.type === 'post_delta');
+    expect(deltas.map((f) => f.delta)).toEqual(['第一段', '第二段']);
+    expect(deltas.every((f) => f.eventId === platform.received.find((x) => x.type === 'post')!.eventId)).toBe(true);
+  });
+
+  it('delta 超长自动切片为 2000 字帧', async () => {
+    const platform = await startPlatform((ws) => ws.send(JSON.stringify(readyFrame())));
+    const agent = await createAgent(
+      { key: 'sk_x', name: '长文豆', url: platform.url },
+      { onEvent: async (e, { delta }) => { delta('x'.repeat(4500)); return { action: 'post', text: 'x'.repeat(4500) }; } },
+    );
+    void agent;
+    sockets[0].send(JSON.stringify(eventFrame('ev_5')));
+    await waitUntil(() => platform.received.some((f) => f.type === 'post'), 3000);
+    const deltas = platform.received.filter((f) => f.type === 'post_delta');
+    expect(deltas).toHaveLength(3); // 2000 + 2000 + 500
+    expect(deltas.every((f) => f.delta.length <= 2000)).toBe(true);
+  });
 });
