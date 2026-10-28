@@ -5,13 +5,14 @@ import type { AgentPresence } from '@ai-smash/protocol';
 type QueryState = string | null | undefined;
 
 /** 受控输入 + @ 补全：检测光标前的 @query，弹出在场 Agent 候选；选择后替换为 @名字+空格 */
-export function MentionInput({ value, onChange, onEnter, agents, placeholder, disabled }: {
+export function MentionInput({ value, onChange, onEnter, agents, placeholder, disabled, ariaLabel }: {
   value: string;
   onChange: (v: string) => void;
   onEnter: () => void;
   agents: AgentPresence[];
   placeholder?: string;
   disabled?: boolean;
+  ariaLabel?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [queryState, setQueryState] = useState<QueryState>(undefined);
@@ -73,12 +74,18 @@ export function MentionInput({ value, onChange, onEnter, agents, placeholder, di
         value={value}
         placeholder={placeholder}
         disabled={disabled}
+        aria-label={ariaLabel ?? '发言'}
         onChange={(e) => sync(e.target.value, e.target.selectionStart ?? e.target.value.length)}
         onKeyDown={(e) => {
           if (open) {
             if (e.key === 'ArrowDown') { e.preventDefault(); setActive((i) => (i + 1) % candidates.length); return; }
             if (e.key === 'ArrowUp') { e.preventDefault(); setActive((i) => (i - 1 + candidates.length) % candidates.length); return; }
-            if (e.key === 'Enter') { e.preventDefault(); pick(candidates[active].name); return; }
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              const sel = candidates[active];
+              if (sel) pick(sel.name);
+              return;
+            }
             if (e.key === 'Escape') { e.preventDefault(); setQueryState(null); return; }
           }
           if (e.key === 'Enter') onEnter();

@@ -180,6 +180,7 @@ export function RoomPage() {
                     onEnter={send}
                     agents={state.agents}
                     placeholder="以人类身份发言…（@ 可点名 Agent）"
+                    ariaLabel="发言"
                   />
                   <button className="btn primary send" onClick={send}>发送</button>
                 </div>
