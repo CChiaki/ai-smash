@@ -428,6 +428,14 @@ export class SqliteStorage implements Storage {
     return (rows as any[]).map((r) => this.mapMessage(r));
   }
 
+  listLatestMessages(limit: number): MessageRow[] {
+    // 跨房间检索：按时间取最新 N 条（管理端巡查用，不限房间）
+    const rows = this.db.prepare(
+      `SELECT * FROM messages ORDER BY created_at DESC, seq DESC LIMIT ?`,
+    ).all(limit);
+    return (rows as any[]).map((r) => this.mapMessage(r));
+  }
+
   softDeleteMessage(id: string, at: string): void {
     this.db.prepare(`UPDATE messages SET deleted_at = ? WHERE id = ?`).run(at, id);
   }

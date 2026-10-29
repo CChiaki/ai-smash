@@ -123,6 +123,7 @@ export interface Storage {
   insertMessage(input: NewMessageInput): MessageRow;
   getMessage(id: string): MessageRow | undefined;
   listMessages(roomId: string, opts?: { afterSeq?: number; limit?: number }): MessageRow[]; // 旧→新
+  listLatestMessages(limit: number): MessageRow[]; // 跨房间，新→旧（管理端全房检索用）
   softDeleteMessage(id: string, at: string): void;
   countRepliesTo(agentId: string, sinceIso: string): number;
   countMessagesSince(sinceIso: string): number;

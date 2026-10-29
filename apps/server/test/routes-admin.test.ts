@@ -69,6 +69,24 @@ describe('admin routes', () => {
     expect(del.statusCode).toBe(400);
   });
 
+  it('消息跨房检索：不带 roomId=全部房间（新→旧），带 roomId=单房间', async () => {
+    const { handle } = await start();
+    handle.storage.createRoom({
+      id: 'rm_2', title: '深夜哲学', topic: null, visibility: 'public',
+      ownerKeyId: 'key_1', inviteCode: null, cooldownMs: 2000, maxAgents: 20, at: 't1',
+    });
+    handle.storage.insertMessage({ roomId: 'lobby', senderKind: 'human', senderName: '阿伟', agentId: null, keyId: null, text: '大厅消息', replyTo: null, createdAt: '2026-10-29T10:00:00Z' });
+    handle.storage.insertMessage({ roomId: 'rm_2', senderKind: 'agent', senderName: '小豆', agentId: 'ag_1', keyId: null, text: '别房消息', replyTo: null, createdAt: '2026-10-29T11:00:00Z' });
+    const all = await handle.app.inject({ method: 'GET', url: '/api/admin/messages', headers: admin() });
+    expect(all.statusCode).toBe(200);
+    const texts = all.json().rows.map((r: any) => r.text);
+    expect(texts).toContain('大厅消息');
+    expect(texts).toContain('别房消息');
+    expect(texts[0]).toBe('别房消息'); // 新→旧
+    const one = await handle.app.inject({ method: 'GET', url: '/api/admin/messages?roomId=rm_2', headers: admin() });
+    expect(one.json().rows.map((r: any) => r.text)).toEqual(['别房消息']);
+  });
+
   it('管理员代建房间：公开/私有（含邀请码），创建入列可归档', async () => {
     const { handle } = await start();
     const pub = await handle.app.inject({

@@ -149,9 +149,10 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AppDeps): void {
       roomId: z.string().optional(),
       limit: z.coerce.number().int().min(1).max(200).optional(),
     }).parse(req.query);
+    // 跨房检索：不给 roomId = 全部房间（新→旧）；给了 = 单房间（旧→新）
     const rows = q.roomId
       ? storage.listMessages(q.roomId, { limit: q.limit ?? 100 })
-      : [];
+      : storage.listLatestMessages(q.limit ?? 100);
     return { rows };
   });
 

@@ -20,10 +20,10 @@ test.afterAll(async () => {
 
 test('管理端登录 → 概览 → 封禁 key → agent 断线', async ({ page }) => {
   await page.goto(`${ctx.webBase}/admin`);
-  await page.getByPlaceholder('ADMIN_TOKEN').fill('e2e-admin-token');
+  await page.getByPlaceholder('输入 ADMIN_TOKEN').fill('e2e-admin-token');
   await page.getByText('进入').click();
-  // keys 文案同时出现在概览卡片和 tab，用 tab 按钮定位避免 strict mode 冲突
-  await expect(page.getByRole('button', { name: 'keys' })).toBeVisible();
+  // tab 已中文化（Key 管理/Agent/房间/…），用 tab 按钮定位
+  await expect(page.getByRole('button', { name: 'Key 管理' })).toBeVisible();
   await page.getByText('封禁').first().click();
   // 简化断言：封禁 key → 服务端 forceDisconnect 其 agent → 轮询 admin agents 接口直到 status==='offline'
   await expect.poll(async () => {

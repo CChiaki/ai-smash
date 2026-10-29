@@ -45,6 +45,9 @@ export function AdminPage() {
   const [roomTitle, setRoomTitle] = useState('');
   const [roomVisibility, setRoomVisibility] = useState<'public' | 'private'>('public');
   const [roomCreateMsg, setRoomCreateMsg] = useState<string | null>(null);
+  // 跨房检索：消息/事件 tab 的房间筛选（'' = 全部房间）
+  const [msgRoom, setMsgRoom] = useState('');
+  const [eventRoom, setEventRoom] = useState('');
 
   const call = useCallback(async <T,>(path: string, opts?: Parameters<typeof api<T>>[1]): Promise<T> => {
     return api<T>(path, { ...opts, admin: true });
@@ -53,9 +56,18 @@ export function AdminPage() {
   const load = useCallback(async (): Promise<void> => {
     try {
       setOverview(await call<typeof EMPTY_OVERVIEW>('/admin/overview'));
+      // 房间列表常载：房间 tab 的操作对象 + 消息/事件 tab 的筛选下拉
+      const rooms = await call<{ rows: any[] }>('/admin/rooms');
+      setRows((r) => ({ ...r, rooms: rooms.rows }));
       const endpoints: Record<string, string> = {
-        keys: '/admin/keys', agents: '/admin/agents', rooms: '/admin/rooms',
-        messages: tab === 'messages' ? '/admin/messages?roomId=lobby' : '', events: '/admin/events?limit=50', audit: '/admin/audit?limit=50',
+        keys: '/admin/keys', agents: '/admin/agents',
+        messages: tab === 'messages'
+          ? (msgRoom ? `/admin/messages?roomId=${encodeURIComponent(msgRoom)}&limit=100` : '/admin/messages?limit=100')
+          : '',
+        events: tab === 'events'
+          ? (eventRoom ? `/admin/events?limit=50&roomId=${encodeURIComponent(eventRoom)}` : '/admin/events?limit=50')
+          : '',
+        audit: '/admin/audit?limit=50',
       };
       const path = endpoints[tab];
       if (path) {
@@ -69,7 +81,7 @@ export function AdminPage() {
         setError('token 无效或已失效');
       }
     }
-  }, [call, tab]);
+  }, [call, tab, msgRoom, eventRoom]);
 
   useEffect(() => {
     if (!authed) return;
@@ -121,6 +133,19 @@ export function AdminPage() {
   }
 
   const empty = <div className="muted" style={{ padding: '12px 4px' }}>暂无数据</div>;
+
+  // 房间筛选下拉：'' = 全部房间；切换即触发重新拉取（msgRoom/eventRoom 在 load 依赖里）
+  const roomFilter = (value: string, onChange: (v: string) => void) => (
+    <div className="form-row" style={{ marginBottom: 12 }}>
+      <select value={value} onChange={(e) => onChange(e.target.value)} aria-label="筛选房间" style={{ maxWidth: 220 }}>
+        <option value="">全部房间</option>
+        {(rows.rooms ?? []).map((r: any) => (
+          <option key={r.id} value={r.id}>{r.title}（{r.id}）</option>
+        ))}
+      </select>
+      {value && <button className="btn sm" onClick={() => onChange('')}>清除筛选</button>}
+    </div>
+  );
 
   return (
     <section>
@@ -221,34 +246,40 @@ export function AdminPage() {
 
         {/* 软删 = 打 deleted_at 标记（行保留供回放占位），直播间即时替换为「[已删除]」；此处显式标注已删行 */}
         {tab === 'messages' && (
-          <div className="table-wrap">
-            <table>
-              <thead><tr><th>#</th><th>内容</th><th>状态</th><th>操作</th></tr></thead>
-              <tbody>
-                {(rows.messages ?? []).map((m: any) => (
-                  <tr key={m.id}>
-                    <td className="mono">{m.seq}</td>
-                    <td>
-                      {m.deletedAt
-                        ? <span className="muted">[已删除] 原文已从直播间隐藏</span>
-                        : <>{m.senderName}: {m.text.slice(0, 40)}{m.attachments?.length ? ` [附件×${m.attachments.length}]` : ''}</>}
-                    </td>
-                    <td>{m.deletedAt ? <span className="tag status-offline">已删除</span> : <span className="tag status-online">在展</span>}</td>
-                    <td>
-                      {m.deletedAt
-                        ? <span className="muted">—</span>
-                        : <button className="btn sm danger" onClick={() => void act(`/admin/messages/${m.id}`, 'DELETE')}>软删</button>}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {(rows.messages ?? []).length === 0 && empty}
-          </div>
+          <>
+            {roomFilter(msgRoom, setMsgRoom)}
+            <div className="table-wrap">
+              <table>
+                <thead><tr><th>#</th><th>房间</th><th>内容</th><th>状态</th><th>操作</th></tr></thead>
+                <tbody>
+                  {(rows.messages ?? []).map((m: any) => (
+                    <tr key={m.id}>
+                      <td className="mono">{m.seq}</td>
+                      <td className="mono">{m.roomId}</td>
+                      <td>
+                        {m.deletedAt
+                          ? <span className="muted">[已删除] 原文已从直播间隐藏</span>
+                          : <>{m.senderName}: {m.text.slice(0, 40)}{m.attachments?.length ? ` [附件×${m.attachments.length}]` : ''}</>}
+                      </td>
+                      <td>{m.deletedAt ? <span className="tag status-offline">已删除</span> : <span className="tag status-online">在展</span>}</td>
+                      <td>
+                        {m.deletedAt
+                          ? <span className="muted">—</span>
+                          : <button className="btn sm danger" onClick={() => void act(`/admin/messages/${m.id}`, 'DELETE')}>软删</button>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {(rows.messages ?? []).length === 0 && empty}
+            </div>
+          </>
         )}
 
         {tab === 'events' && (
-          <div className="table-wrap">
+          <>
+            {roomFilter(eventRoom, setEventRoom)}
+            <div className="table-wrap">
             <table>
               <thead><tr><th>事件</th><th>房间</th><th>Agent</th><th>状态</th><th>原因</th><th>延迟</th><th>点名</th></tr></thead>
               <tbody>
@@ -266,7 +297,8 @@ export function AdminPage() {
               </tbody>
             </table>
             {(rows.events ?? []).length === 0 && empty}
-          </div>
+            </div>
+          </>
         )}
 
         {tab === 'audit' && (
