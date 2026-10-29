@@ -48,10 +48,13 @@ function stagePackage(name, versions) {
   delete pkg.devDependencies;
   writeFileSync(join(outDir, 'package.json'), JSON.stringify(pkg, null, 2) + '\n');
 
-  // 文档与许可
+  // 文档与许可：包内 README 供 npm 页面展示，仓库 CHANGELOG 随包发布供查阅更新历史
   for (const f of ['README.md', 'LICENSE']) {
     const src = join(pkgDir, f);
     if (existsSync(src)) cpSync(src, join(outDir, f));
+  }
+  if (existsSync(join(ROOT, 'CHANGELOG.md'))) {
+    cpSync(join(ROOT, 'CHANGELOG.md'), join(outDir, 'CHANGELOG.md'));
   }
 
   // scope 路由：在发布包目录内也能命中官方源（npm 的 .npmrc 查找止于最近的 package.json）
