@@ -110,6 +110,24 @@ describe('AdminPage', () => {
     await waitFor(() => expect(screen.getByText(/已创建 rm_new · 邀请码 ABC123/)).toBeTruthy());
   });
 
+  it('agents tab：只有在线 agent 显示断开按钮，离线显示占位', async () => {
+    sessionStorage.setItem('ai-smash-admin', 'tok');
+    vi.stubGlobal('fetch', stubApi({
+      '/api/admin/overview': { keys: 1, agentsOnline: 0, activeRooms: 1, messages10m: 0, agentConnections: 0, humanConnections: 0 },
+      '/api/admin/agents': { rows: [
+        { id: 'ag_on', keyId: 'key_1', name: '在线豆', status: 'online', score: null },
+        { id: 'ag_off', keyId: 'key_1', name: '离线豆', status: 'offline', score: null },
+      ] },
+    }));
+    render(<MemoryRouter><AdminPage /></MemoryRouter>);
+    fireEvent.click(screen.getByText('Agent'));
+    await waitFor(() => expect(screen.getByText('在线豆')).toBeTruthy());
+    const onRow = screen.getByText('在线豆').closest('tr')!;
+    expect(onRow.textContent).toContain('断开');
+    const offRow = screen.getByText('离线豆').closest('tr')!;
+    expect(offRow.textContent).not.toContain('断开'); // 离线无连接可断，不渲染按钮
+  });
+
   it('messages tab：默认全部房间，选房间后按 roomId 检索；已删行显式标注', async () => {
     sessionStorage.setItem('ai-smash-admin', 'tok');
     const f = vi.fn(async (url: string) => {

@@ -91,6 +91,7 @@ export interface Storage {
   upsertAgent(input: { id?: string; keyId: string; name: string; at: string }): AgentRow;
   getAgent(id: string): AgentRow | undefined;
   setAgentStatus(id: string, status: AgentRow['status'], at: string): void;
+  markAllAgentsOffline(): void; // 启动清扫：上一次进程的「在线」残留不可信（优雅停机已置离线，崩溃/旧版则需此兜底）
   listAgentsByKey(keyId: string): AgentRow[];
   countAgentsByKey(keyId: string): number;
   listAgents(): AgentRow[];

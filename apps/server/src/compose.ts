@@ -18,6 +18,9 @@ export interface ServerHandle {
 export function composeServer(config: Config, provided?: SqliteStorage): ServerHandle {
   const storage = provided ?? new SqliteStorage(':memory:');
   storage.ensureLobby({ title: '公共大厅', maxAgents: DEFAULT_LIMITS.lobbyMaxAgents, at: new Date().toISOString() });
+  // 启动清扫：进程刚起、不可能有连接，上一世的「在线」一律不可信（旧版停机遗留/崩溃残留），
+  // 否则管理端对假在线的 agent 点断开永远无效果
+  storage.markAllAgentsOffline();
   const bus = new MemoryBus();
   const engine = new RoomEngine({ storage, bus });
   // 先构造网关（admin 路由需要真实网关实例），再 buildApp；网关 deps 不引用 app，无循环依赖

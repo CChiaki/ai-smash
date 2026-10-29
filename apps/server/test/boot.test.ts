@@ -43,6 +43,20 @@ describe('boot（server.ts 组装）', () => {
     expect(second.storage.getEvent('ev_pending')?.status).toBe('timeout');
   });
 
+  it('启动清扫：上一世残留的「在线」agent 重启即置 offline（假在线治理）', async () => {
+    const first = await start();
+    const myDir = dirs[dirs.length - 1]; // start() 刚推入的本测试目录（dirs[0] 属于更早的用例）
+    const raw = newKey();
+    first.h.storage.createKey({ id: 'key_s', hash: sha256(raw), label: null, createdAt: 't' });
+    first.h.storage.upsertAgent({ id: 'ag_s', keyId: 'key_s', name: '残留豆', at: 't' });
+    // 模拟旧版/崩溃残留：库里是在线，但没有连接
+    first.h.storage.setAgentStatus('ag_s', 'online', 't');
+    await first.h.shutdown();
+
+    const second = await boot({ ...testConfig(), dbPath: join(myDir, 'data', 'test.db'), port: 0 });
+    expect(second.storage.getAgent('ag_s')?.status).toBe('offline'); // 启动即清扫
+  });
+
   it('配置 corsOrigin 后 API 带跨源头，OPTIONS 预检 204；未配置则不带', async () => {
     const { h, base } = await start({ corsOrigin: 'https://web.example' });
     const res = await fetch(`${base}/api/rooms?visibility=public`, { headers: { origin: 'https://web.example' } });

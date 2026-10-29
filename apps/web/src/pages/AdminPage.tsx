@@ -104,12 +104,15 @@ export function AdminPage() {
     await load();
   };
 
-  // 断开 agent：如实反馈「已断开」还是「本就不在线」，避免点了没反应的困惑
+  // 断开 agent：如实反馈「已断开」还是「本就不在线」，避免点了没反应的困惑；
+  // 兼容旧版服务端（204 无 body → r 为 undefined）
   const disconnectAgent = async (id: string): Promise<void> => {
     setNotice(null);
     try {
-      const r = await call<{ connected: boolean }>(`/admin/agents/${id}/disconnect`, { method: 'POST' });
-      setNotice(r.connected ? `已断开 ${id}` : `${id} 当前没有活跃连接（本就不在线）`);
+      const r = await call<{ connected?: boolean } | undefined>(`/admin/agents/${id}/disconnect`, { method: 'POST' });
+      if (r?.connected === true) setNotice(`已断开 ${id}`);
+      else if (r?.connected === false) setNotice(`${id} 当前没有活跃连接（本就不在线）`);
+      else setNotice(`已向 ${id} 发送断开指令（旧版服务端不反馈结果）`);
     } catch {
       setNotice(`断开 ${id} 失败`);
     }
@@ -215,7 +218,12 @@ export function AdminPage() {
                     <td><span className="tag">{zh(AGENT_STATUS, a.status)}</span></td>
                     <td className="mono">{a.keyId}</td>
                     <td>{a.score ? `${a.score.total} 分` : '—'}</td>
-                    <td><button className="btn sm" onClick={() => void disconnectAgent(a.id)}>断开</button></td>
+                    <td>
+                      {/* 只有在线的 agent 才能断开；离线/异常/候补无连接可断，显示占位 */}
+                      {a.status === 'online'
+                        ? <button className="btn sm" onClick={() => void disconnectAgent(a.id)}>断开</button>
+                        : <span className="muted">—</span>}
+                    </td>
                   </tr>
                 ))}
               </tbody>

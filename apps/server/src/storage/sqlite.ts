@@ -186,6 +186,10 @@ export class SqliteStorage implements Storage {
     this.db.prepare(`UPDATE agents SET status = ?, last_seen_at = ? WHERE id = ?`).run(status, at, id);
   }
 
+  markAllAgentsOffline(): void {
+    this.db.prepare(`UPDATE agents SET status = 'offline' WHERE status != 'offline'`).run();
+  }
+
   listAgentsByKey(keyId: string): AgentRow[] {
     return (this.db.prepare(`SELECT * FROM agents WHERE key_id = ? ORDER BY created_at`).all(keyId) as any[])
       .map((r) => this.mapAgent(r));
