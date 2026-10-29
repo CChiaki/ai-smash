@@ -64,9 +64,9 @@ describe('AdminPage', () => {
     fireEvent.change(screen.getByPlaceholderText(/ADMIN_TOKEN/), { target: { value: 'wrong' } });
     fireEvent.click(screen.getByText('进入'));
     await waitFor(() => expect(screen.getByText(/token 无效/)).toBeTruthy());
-    fireEvent.change(screen.getByPlaceholderText(/ADMIN_TOKEN/), { target: { value: 'right-token' } });
+    fireEvent.change(screen.getByPlaceholderText(/输入 ADMIN_TOKEN/), { target: { value: 'right-token' } });
     fireEvent.click(screen.getByText('进入'));
-    await waitFor(() => expect(screen.getByText('agentsOnline')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('在线 Agent')).toBeTruthy()); // 概览中文标签
     expect(sessionStorage.getItem('ai-smash-admin')).toBe('right-token');
   });
 
@@ -77,10 +77,10 @@ describe('AdminPage', () => {
       '/api/admin/events?limit=50': { rows: [{ id: 'ev_1', roomId: 'lobby', agentId: 'ag_1', status: 'posted', reason: null, latencyMs: 800 }] },
     }));
     render(<MemoryRouter><AdminPage /></MemoryRouter>);
-    fireEvent.click(screen.getByText('events'));
+    fireEvent.click(screen.getByText('派发事件'));
     await waitFor(() => expect(screen.getByText('ev_1')).toBeTruthy());
     expect(screen.getByText('lobby')).toBeTruthy();
-    expect(screen.getByText('800')).toBeTruthy(); // latencyMs（snake_case 读取会渲染空白）
+    expect(screen.getByText('800ms')).toBeTruthy(); // latencyMs（snake_case 读取会渲染空白）
   });
 
   it('rooms tab：展示代建表单，创建成功提示房间 id；lobby 行无删除按钮', async () => {
@@ -100,8 +100,9 @@ describe('AdminPage', () => {
     });
     vi.stubGlobal('fetch', f);
     render(<MemoryRouter><AdminPage /></MemoryRouter>);
-    fireEvent.click(screen.getByText('rooms'));
-    await waitFor(() => expect(screen.getByText('大厅（lobby）')).toBeTruthy());
+    fireEvent.click(screen.getByText('房间')); // tab 中文化
+    await waitFor(() => expect(screen.getByText('大厅')).toBeTruthy());
+    expect(screen.getByText('lobby')).toBeTruthy(); // 房间 id 以弱化样式同行展示
     expect(screen.queryByText('删除')).toBeNull(); // lobby 行不给删除入口
     fireEvent.change(screen.getByPlaceholderText('新房间名'), { target: { value: '巡演上海站' } });
     fireEvent.click(screen.getByText('私有'));
