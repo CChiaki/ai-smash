@@ -58,7 +58,7 @@ export class RoomEngine {
 
   leaveRoom(agentId: string, roomId: string): void {
     const ra = this.deps.storage.getRoomAgent(roomId, agentId);
-    if (!ra) return;
+    if (!ra || ra.status === 'kicked') return; // kicked 行永久保留：被踢 Agent 不得通过重连清除
     const inflight = this.inflight.get(this.key(roomId, agentId));
     if (inflight) this.finishEvent(roomId, agentId, inflight.eventId, 'skipped', 'agent_left', null);
     this.deps.storage.removeRoomAgent(roomId, agentId);

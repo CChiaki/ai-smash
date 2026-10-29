@@ -65,6 +65,34 @@ describe('单 key Agent 上限与网关崩溃回归', () => {
     c2.ws.terminate();
   });
 
+  it('被踢 Agent 两次重连均被拒，kicked 行不因 close 清理丢失', async () => {
+    const { handle, url } = await start();
+    const raw = newKey();
+    handle.storage.createKey({ id: 'key_m', hash: sha256(raw), label: null, createdAt: 't' });
+    const agent = handle.storage.upsertAgent({ keyId: 'key_m', name: '双拒豆', at: 't' });
+    handle.storage.setAgentStatus(agent.id, 'online', 't');
+    handle.storage.addRoomAgent('lobby', agent.id, 'active', 't');
+    handle.storage.setRoomAgentStatus('lobby', agent.id, 'kicked'); // 被踢
+
+    // 第 1 次重连：close reason 含 kicked
+    const c1 = await connect(url);
+    send(c1.ws, { type: 'hello', protocol: 1, key: raw, agent: { name: '双拒豆' } });
+    const closed1 = await c1.closed;
+    expect(closed1.reason).toContain('kicked');
+    expect(closed1.code).toBe(4003);
+
+    // 第 2 次重连（新连接）：仍被拒，kicked 行未因 close 清理被删除
+    const c2 = await connect(url);
+    send(c2.ws, { type: 'hello', protocol: 1, key: raw, agent: { name: '双拒豆' } });
+    const closed2 = await c2.closed;
+    expect(closed2.reason).toContain('kicked');
+    expect(closed2.code).toBe(4003);
+
+    expect(handle.storage.getRoomAgent('lobby', agent.id)?.status).toBe('kicked');
+    c1.ws.terminate();
+    c2.ws.terminate();
+  });
+
   it('hello 时 joinRoom 抛 forbidden：连接被关（引擎错误语义透传），服务端存活', async () => {
     const { handle, url } = await start();
     const raw = newKey();
