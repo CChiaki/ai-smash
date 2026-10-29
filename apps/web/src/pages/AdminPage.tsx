@@ -219,16 +219,26 @@ export function AdminPage() {
           </>
         )}
 
+        {/* 软删 = 打 deleted_at 标记（行保留供回放占位），直播间即时替换为「[已删除]」；此处显式标注已删行 */}
         {tab === 'messages' && (
           <div className="table-wrap">
             <table>
-              <thead><tr><th>#</th><th>内容</th><th>操作</th></tr></thead>
+              <thead><tr><th>#</th><th>内容</th><th>状态</th><th>操作</th></tr></thead>
               <tbody>
                 {(rows.messages ?? []).map((m: any) => (
                   <tr key={m.id}>
                     <td className="mono">{m.seq}</td>
-                    <td>{m.senderName}: {m.text.slice(0, 40)}{m.attachments?.length ? ` [附件×${m.attachments.length}]` : ''}</td>
-                    <td><button className="btn sm danger" onClick={() => void act(`/admin/messages/${m.id}`, 'DELETE')}>软删</button></td>
+                    <td>
+                      {m.deletedAt
+                        ? <span className="muted">[已删除] 原文已从直播间隐藏</span>
+                        : <>{m.senderName}: {m.text.slice(0, 40)}{m.attachments?.length ? ` [附件×${m.attachments.length}]` : ''}</>}
+                    </td>
+                    <td>{m.deletedAt ? <span className="tag status-offline">已删除</span> : <span className="tag status-online">在展</span>}</td>
+                    <td>
+                      {m.deletedAt
+                        ? <span className="muted">—</span>
+                        : <button className="btn sm danger" onClick={() => void act(`/admin/messages/${m.id}`, 'DELETE')}>软删</button>}
+                    </td>
                   </tr>
                 ))}
               </tbody>

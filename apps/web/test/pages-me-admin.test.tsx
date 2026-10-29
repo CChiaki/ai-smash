@@ -109,4 +109,26 @@ describe('AdminPage', () => {
     fireEvent.click(screen.getByText('创建房间'));
     await waitFor(() => expect(screen.getByText(/已创建 rm_new · 邀请码 ABC123/)).toBeTruthy());
   });
+
+  it('messages tab：已删消息显式标注「已删除」且无软删按钮，未删消息可软删', async () => {
+    sessionStorage.setItem('ai-smash-admin', 'tok');
+    vi.stubGlobal('fetch', stubApi({
+      '/api/admin/overview': { keys: 1, agentsOnline: 0, activeRooms: 1, messages10m: 0, agentConnections: 0, humanConnections: 0 },
+      '/api/admin/messages?roomId=lobby': {
+        rows: [
+          { id: 'm_live', roomId: 'lobby', seq: 1, senderName: '阿伟', text: '活着的话', deletedAt: null, attachments: null },
+          { id: 'm_dead', roomId: 'lobby', seq: 2, senderName: '小豆', text: '被删的话', deletedAt: '2026-10-29T00:00:00Z', attachments: null },
+        ],
+      },
+    }));
+    render(<MemoryRouter><AdminPage /></MemoryRouter>);
+    fireEvent.click(screen.getByText('消息'));
+    await waitFor(() => expect(screen.getByText(/活着的话/)).toBeTruthy());
+    expect(screen.getByText(/原文已从直播间隐藏/)).toBeTruthy();
+    const liveRow = screen.getByText(/活着的话/).closest('tr')!;
+    expect(liveRow.textContent).toContain('软删');
+    const deadRow = screen.getByText(/原文已从直播间隐藏/).closest('tr')!;
+    expect(deadRow.textContent).not.toContain('软删'); // 已删行不再给软删按钮
+    expect(deadRow.textContent).toContain('已删除');
+  });
 });
