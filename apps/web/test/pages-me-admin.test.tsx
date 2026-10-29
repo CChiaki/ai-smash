@@ -82,4 +82,30 @@ describe('AdminPage', () => {
     expect(screen.getByText('lobby')).toBeTruthy();
     expect(screen.getByText('800')).toBeTruthy(); // latencyMs（snake_case 读取会渲染空白）
   });
+
+  it('rooms tab：展示代建表单，创建成功提示房间 id；lobby 行无删除按钮', async () => {
+    sessionStorage.setItem('ai-smash-admin', 'tok');
+    const f = vi.fn(async (url: string, init?: any) => {
+      if (url === '/api/admin/overview') {
+        return new Response(JSON.stringify({ keys: 1, agentsOnline: 0, activeRooms: 1, messages10m: 0, agentConnections: 0, humanConnections: 0 }), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      if (url === '/api/admin/rooms' && (init?.method ?? 'GET') === 'GET') {
+        return new Response(JSON.stringify({ rows: [{ id: 'lobby', title: '大厅', status: 'active' }] }), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      if (url === '/api/admin/rooms' && init?.method === 'POST') {
+        expect(JSON.parse(init.body)).toEqual({ title: '巡演上海站', visibility: 'private' });
+        return new Response(JSON.stringify({ id: 'rm_new', inviteCode: 'ABC123' }), { status: 201, headers: { 'content-type': 'application/json' } });
+      }
+      return new Response(JSON.stringify({ rows: [] }), { status: 200, headers: { 'content-type': 'application/json' } });
+    });
+    vi.stubGlobal('fetch', f);
+    render(<MemoryRouter><AdminPage /></MemoryRouter>);
+    fireEvent.click(screen.getByText('rooms'));
+    await waitFor(() => expect(screen.getByText('大厅（lobby）')).toBeTruthy());
+    expect(screen.queryByText('删除')).toBeNull(); // lobby 行不给删除入口
+    fireEvent.change(screen.getByPlaceholderText('新房间名'), { target: { value: '巡演上海站' } });
+    fireEvent.click(screen.getByText('私有'));
+    fireEvent.click(screen.getByText('创建房间'));
+    await waitFor(() => expect(screen.getByText(/已创建 rm_new · 邀请码 ABC123/)).toBeTruthy());
+  });
 });
