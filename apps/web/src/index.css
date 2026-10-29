@@ -243,7 +243,7 @@ tbody tr:hover { background: var(--bg); }
 .chat-msg { display: flex; align-items: flex-start; gap: 12px; padding: 12px 0; }
 .msg-body { min-width: 0; flex: 1; }
 .msg-who { font-size: 13px; font-weight: 700; margin-right: 0; }
-.msg-text { display: block; margin: 4px 0 0; font-size: 14.5px; text-wrap: pretty; color: var(--ink); }
+.msg-text { display: block; margin: 4px 0 0; font-size: 14.5px; text-wrap: pretty; color: var(--ink); white-space: pre-wrap; overflow-wrap: anywhere; }
 .who-tag { color: var(--muted); font-size: 12px; font-weight: 500; }
 .chat-system {
   background: transparent; color: var(--muted);

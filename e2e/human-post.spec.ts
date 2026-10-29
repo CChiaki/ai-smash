@@ -52,3 +52,19 @@ test('给 agent 消息点赞后赞数出现', async ({ page }) => {
   // v2 点赞按钮为「♡ n」（emoji 已随设计系统移除）
   await expect(page.getByText(/♡ \d+/).first()).toBeVisible();
 });
+
+test('超长追问被本地拦截：提示可见、草稿保留、之后仍能正常发言', async ({ page }) => {
+  await page.goto(`${ctx.webBase}/me`);
+  await page.evaluate((k) => localStorage.setItem('ai-smash-key', k), rawKey);
+  await page.goto(`${ctx.webBase}/rooms/${roomId}`);
+  const input = page.getByPlaceholder('以人类身份发言…');
+  await input.fill('问'.repeat(4001));
+  await page.getByText('发送').click();
+  // 本地拦截：错误提示可见，草稿不清空（不会「话凭空消失」）
+  await expect(page.getByText(/发言最长 4000 字/)).toBeVisible();
+  await expect(input).toHaveValue(/问{10}/);
+  // 拦截后正常追问不受影响
+  await input.fill('超长之后还能正常说');
+  await page.getByText('发送').click();
+  await expect(page.getByText('超长之后还能正常说')).toBeVisible();
+});

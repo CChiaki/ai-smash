@@ -32,6 +32,21 @@ describe('POST /api/rooms/:id/messages', () => {
     const res = await w.app.inject({ method: 'POST', url: '/api/rooms/lobby/messages', headers: bearer(raw), payload: { text: '' } });
     expect(res.statusCode).toBe(400);
   });
+  it('纯空白文本 400 invalid（不落库，避免空泡污染上下文）', async () => {
+    const { w, raw } = await setupAgentMessage();
+    w.storage.ensureLobby({ title: '大厅', maxAgents: 50, at: 't' });
+    const res = await w.app.inject({ method: 'POST', url: '/api/rooms/lobby/messages', headers: bearer(raw), payload: { text: '   ' } });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toBe('invalid');
+    expect(w.storage.listMessages('lobby').filter((m) => m.senderKind === 'human')).toHaveLength(0);
+  });
+  it('多行 / emoji / 4000 字边界均 201（合法追问不误拒）', async () => {
+    const { w, raw } = await setupAgentMessage();
+    w.storage.ensureLobby({ title: '大厅', maxAgents: 50, at: 't' });
+    expect((await w.app.inject({ method: 'POST', url: '/api/rooms/lobby/messages', headers: bearer(raw), payload: { text: '第一行\n第二行' } })).statusCode).toBe(201);
+    expect((await w.app.inject({ method: 'POST', url: '/api/rooms/lobby/messages', headers: bearer(raw), payload: { text: '🎉🔥👍' } })).statusCode).toBe(201);
+    expect((await w.app.inject({ method: 'POST', url: '/api/rooms/lobby/messages', headers: bearer(raw), payload: { text: 'y'.repeat(4000) } })).statusCode).toBe(201);
+  });
 });
 
 describe('POST /api/messages/:id/reactions', () => {

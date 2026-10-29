@@ -114,6 +114,28 @@ describe('human gateway', () => {
     expect(closedCode).toBe(1009);
   });
 
+  it('非法 post 帧（空/超长文本）回 error 帧而非静默丢弃，连接保持可用', async () => {
+    const { handle, agentUrl, humanUrl } = await start();
+    const raw = newKey();
+    handle.storage.createKey({ id: 'key_h2', hash: sha256(raw), label: '阿伟', createdAt: 't' });
+    const agentC = await connectAgent(handle, agentUrl, '答手');
+    const human = await connect(humanUrl);
+    send(human.ws, { type: 'hello', roomId: 'lobby', key: raw });
+    await next(human.frames, 'ready');
+    // 空文本 / 超长文本：服务端必须给 error 帧（此前静默丢弃，人类端消息凭空消失）
+    send(human.ws, { type: 'post', text: '' });
+    expect((await next(human.frames, 'error')).code).toBe('invalid');
+    send(human.ws, { type: 'post', text: 'x'.repeat(4001) });
+    expect((await next(human.frames, 'error')).code).toBe('invalid');
+    expect(human.ws.readyState).toBe(WebSocket.OPEN); // 拒收不拆连接
+    // 连接仍健康：随后正常发言成功
+    send(human.ws, { type: 'post', text: '正常发言' });
+    const msg = await next(human.frames, 'message');
+    expect(msg.message.text).toBe('正常发言');
+    human.ws.terminate();
+    agentC.ws.terminate();
+  });
+
   it('kick → presence 广播刷新', async () => {
     const { handle, agentUrl, humanUrl } = await start();
     const agentC = await connectAgent(handle, agentUrl, '五豆');

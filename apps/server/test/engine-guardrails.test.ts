@@ -59,6 +59,17 @@ describe('agentPost 基本流', () => {
     expect(w.storage.getEvent(dispatched[0].eventId)?.status).toBe('rejected');
   });
 
+  it('纯空白文本拒绝 invalid（人类与 agent 双侧）', () => {
+    vi.setSystemTime(t0());
+    const w = makeWorld();
+    expect(() => w.engine.humanPost('lobby', 'key_1', '阿伟', '   ')).toThrow(EngineError);
+    const dispatched = record(w.bus, Topics.eventDispatch);
+    const a = addAgent(w, '小豆');
+    join(w, a.id);
+    w.engine.humanPost('lobby', 'key_1', '阿伟', 'hi');
+    expect(w.engine.agentPost(a.id, dispatched[0].eventId, '\n\t ')).toEqual({ status: 'rejected', reason: 'invalid' });
+  });
+
   it('暂停的房间拒绝 paused', () => {
     vi.setSystemTime(t0());
     const w = makeWorld();

@@ -116,12 +116,23 @@ export class HumanGateway {
     // maxPayload 超限等协议错误会以 'error' 事件到达；无监听会变成 uncaughtException
     ws.on('error', () => {});
 
+    // post 形态但 text 非法（空 / 超 4000 字 / 非字符串）被 zod 整帧拒绝：明确回 error 帧。
+    // 静默丢弃会让人类端「消息凭空消失」（草稿已清、无提示），表现为会话被污染假死。
+    const reportInvalidPost = (raw: unknown): void => {
+      if (!joined) return;
+      let obj: any;
+      try { obj = JSON.parse(String(raw)); } catch { return; }
+      if (obj?.type !== 'post') return;
+      this.send(ws, { type: 'error', code: 'invalid', message: '发言内容不合法：需为 1~4000 字' });
+    };
+
     ws.on('message', (data) => {
       try {
         let frame: any;
         try {
           frame = HumanClientSchema.parse(JSON.parse(String(data)));
         } catch {
+          reportInvalidPost(data);
           return;
         }
         if (!joined) {

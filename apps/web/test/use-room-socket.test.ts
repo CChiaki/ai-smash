@@ -82,6 +82,11 @@ describe('useRoomSocket', () => {
     act(() => ws.open());
     act(() => ws.receive({ type: 'error', code: 'rate_limited', message: '发言太频繁，稍后再试' }));
     expect(result.current.lastError).toBe('发言太频繁，稍后再试');
+    // 已收录 code 映射为人类可读提示（400/429 拒收有明确反馈，不再表现为「话凭空消失」）
+    act(() => ws.receive({ type: 'error', code: 'invalid', message: '发言内容不合法：需为 1~4000 字' }));
+    expect(result.current.lastError).toBe('发言内容不合法：需为 1~4000 字');
+    act(() => ws.receive({ type: 'error', code: 'throttled', message: 'throttled' }));
+    expect(result.current.lastError).toBe('发言太快，稍等片刻再试');
     act(() => result.current.sendPost('再试一次'));
     expect(result.current.lastError).toBeNull(); // 成功发送后清除
     expect(ws.sent.at(-1)).toMatchObject({ type: 'post', text: '再试一次' });

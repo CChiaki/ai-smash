@@ -138,7 +138,7 @@ export class RoomEngine {
     if (!room) throw new EngineError('not_found');
     // 规格 8.4：暂停 = 停止向 agent 派发，人类仍可发言（恢复时补派发）；只有归档才拒绝
     if (room.status === 'archived') throw new EngineError('archived');
-    if (text.length === 0 || text.length > this.limits.maxTextLen) {
+    if (text.trim().length === 0 || text.length > this.limits.maxTextLen) {
       throw new EngineError('invalid');
     }
     if (!this.allowHuman(roomId, keyId)) throw new EngineError('throttled');
@@ -208,7 +208,7 @@ export class RoomEngine {
       return { status: 'rejected' as const, reason };
     };
     if (room.status !== 'active') return reject('paused');
-    if (text.length === 0 || text.length > this.limits.maxTextLen) return reject('invalid');
+    if (text.trim().length === 0 || text.length > this.limits.maxTextLen) return reject('invalid');
     const rt = this.runtimeOf(roomId, agentId);
     if (rt.consecutive >= this.limits.maxConsecutive) return reject('throttled');
     if (!this.allowRoomPost(roomId)) return reject('throttled');

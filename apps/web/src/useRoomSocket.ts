@@ -3,6 +3,15 @@ import { HumanServerSchema } from '@ai-smash/protocol';
 import { getToken } from './auth.js';
 import { initialRoomState, roomReducer } from './room-reducer.js';
 
+// 服务端 error 帧常见 code → 人类可读提示（未收录的 code 透传服务端 message）
+const HUMAN_ERROR_TEXT: Record<string, string> = {
+  invalid: '发言内容不合法：需为 1~4000 字',
+  throttled: '发言太快，稍等片刻再试',
+  forbidden: '不是房间成员，无法发言',
+  unauthorized: '发言需要 key，请先登录',
+  post_failed: '发言失败，请重试',
+};
+
 export function useRoomSocket(roomId: string | null) {
   const [state, dispatch] = useReducer(roomReducer, initialRoomState);
   const [connected, setConnected] = useState(false);
@@ -52,7 +61,7 @@ export function useRoomSocket(roomId: string | null) {
         } else if (f.type === 'trace') {
           dispatch({ type: 'trace', agentId: f.agentId, kind: f.kind, text: f.text });
         } else if (f.type === 'error') {
-          setLastError(f.message ?? f.code); // 保留到下一次成功发言时清除
+          setLastError(HUMAN_ERROR_TEXT[f.code] ?? f.message ?? f.code); // 保留到下一次成功发言时清除
         }
       };
       ws.onclose = (event: CloseEvent) => {

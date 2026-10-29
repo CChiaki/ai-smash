@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { DEFAULT_LIMITS } from '@ai-smash/protocol';
 import type { ChatMessage, RoomSummary } from '@ai-smash/protocol';
@@ -35,6 +35,16 @@ export function RoomPage() {
   const roomView: RoomView | null = room ? { ...room, ...(state.room ?? {}) } : state.room;
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
+  // 已发出的草稿：服务端拒收（throttled/invalid/forbidden…）时放回输入框，避免「话凭空消失」
+  const sentTextRef = useRef('');
+
+  // 400/429 拒收不污染会话：错误可见 + 草稿可恢复 + 后续发言不受影响
+  useEffect(() => {
+    if (lastError && sentTextRef.current && draft === '') {
+      setDraft(sentTextRef.current);
+      sentTextRef.current = '';
+    }
+  }, [lastError, draft]);
 
   useEffect(() => {
     void fetchRoom(id).then(setRoom).catch((e) => setError(e instanceof ApiError ? `房间不可见：${e.code}` : '加载失败'));
@@ -72,10 +82,16 @@ export function RoomPage() {
   const send = (): void => {
     const text = draft.trim();
     if (text.length === 0) return;
+    // 超长本地拦截：服务端会整帧拒绝（REST 400 / WS error），发出去只会「话凭空消失」
+    if (text.length > DEFAULT_LIMITS.maxTextLen) {
+      setSendError(`发言最长 ${DEFAULT_LIMITS.maxTextLen} 字，当前 ${text.length} 字，请精简后再发`);
+      return; // 保稿
+    }
     if (!sendPost(text)) {
       setSendError('未连接，发言未发出');
       return; // 保稿：不清空输入框
     }
+    sentTextRef.current = text; // 服务端拒收时（见下方 effect）放回输入框
     setSendError(null);
     setDraft('');
   };
