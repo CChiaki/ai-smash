@@ -69,4 +69,25 @@ describe('composeServer close 顺序', () => {
     expect(fakeUpgrade(handle.agentGateway)).toBe(true); // 排空后直接销毁
     expect(fakeUpgrade(handle.humanGateway)).toBe(true);
   });
+
+  it('closeAll 同步把在线 agent 置 offline（停机不留假在线）', async () => {
+    const handle = composeServer(testConfig());
+    await handle.app.listen({ port: 0, host: '127.0.0.1' });
+    closers.push(() => handle.close());
+    const port = (handle.app.server.address() as { port: number }).port;
+    const raw = newKey();
+    handle.storage.createKey({ id: 'key_off', hash: sha256(raw), label: null, createdAt: 't' });
+    const ws = new WebSocket(`ws://127.0.0.1:${port}/ws/agent`);
+    const frames: any[] = [];
+    ws.on('message', (d) => frames.push(JSON.parse(String(d))));
+    await new Promise<void>((r) => ws.on('open', r));
+    ws.send(JSON.stringify({ type: 'hello', protocol: 1, key: raw, agent: { name: '假在线豆' } }));
+    for (let i = 0; i < 50 && !frames.some((f) => f.type === 'ready'); i++) {
+      await new Promise((r) => setTimeout(r, 10));
+    }
+    const agentId = frames.find((f) => f.type === 'ready')?.agentId as string;
+    expect(handle.storage.getAgent(agentId)?.status).toBe('online'); // 连接期间在线
+    handle.agentGateway.closeAll();
+    expect(handle.storage.getAgent(agentId)?.status).toBe('offline'); // 停机即离线（注册表清空前同步写入）
+  });
 });

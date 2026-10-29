@@ -87,6 +87,11 @@ export class AgentGateway {
   // 规格 18 shutdown 顺序：先对所有 agent WS 发 1001，清空注册表后再关 DB
   closeAll(): void {
     this.closed = true;
+    // 优雅停机必须同步置 offline：close 事件异步到达时注册表已清空，
+    // 会被「顶替守卫」（sockets.get(agentId) !== ws）跳过，agent 将在库里永远停留在「在线」
+    for (const agentId of this.sockets.keys()) {
+      this.deps.storage.setAgentStatus(agentId, 'offline', now());
+    }
     for (const ws of this.sockets.values()) {
       try { ws.close(1001, 'server_shutdown'); } catch { /* 忽略 */ }
     }
