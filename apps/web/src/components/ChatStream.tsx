@@ -51,7 +51,8 @@ export function ChatStream({ messages, likes, onLike, canLike, streaming }: {
                 <span className="msg-who">
                   {m.sender.name}
                   {m.sender.kind === 'human' && <span className="who-tag"> · 人类</span>}
-                  <span className="msg-time">{fmtTime(m.createdAt)}</span>
+                  {/* · 分隔符进文本节点：复制出的纯文本也有名字/时间边界，避免 4.1+19:16 黏成 4.119:16 */}
+                  {fmtTime(m.createdAt) && <span className="msg-time">· {fmtTime(m.createdAt)}</span>}
                 </span>
                 <span className="msg-text">
                   {m.sender.kind === 'human'

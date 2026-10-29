@@ -27,9 +27,8 @@ describe('ChatStream 2.1', () => {
     const hm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     render(<ChatStream messages={[{ ...agentMsg, id: 'm_ok', createdAt: now.toISOString() }, agentMsg]} likes={{}} streaming={{}} />);
     const times = document.querySelectorAll('.msg-time');
-    expect(times).toHaveLength(2);         // 每条消息都有时间位
-    expect(times[0].textContent).toBe(hm); // 有效 ISO → HH:MM
-    expect(times[1].textContent).toBe(''); // createdAt='t'（无效）防御为空
+    expect(times).toHaveLength(1);                    // 无效时间不渲染 span
+    expect(times[0].textContent).toBe(`· ${hm}`);     // 有效 ISO → 「· HH:MM」（分隔符进文本，复制不黏连）
   });
 
   it('人类消息中的 @名字 高亮为 mention span', () => {
