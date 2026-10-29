@@ -109,7 +109,7 @@ export function AdminPage() {
           ))}
           {tab === 'messages' && (rows.messages ?? []).map((m: any) => (
             <div key={m.id} className="agent-row">
-              <span className="name muted">[{m.seq}] {m.senderName}: {m.text.slice(0, 40)}</span>
+              <span className="name muted">[{m.seq}] {m.senderName}: {m.text.slice(0, 40)}{m.attachments?.length ? ` [附件×${m.attachments.length}]` : ''}</span>
               <button className="btn sm danger" onClick={() => void act(`/admin/messages/${m.id}`, 'DELETE')}>软删</button>
             </div>
           ))}
