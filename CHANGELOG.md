@@ -27,6 +27,7 @@
 ### 文档
 - 应用内接入指南补齐 2.1/2.2 能力（trace/流式 helper、attachments、@点名条目）、新增「发送各类消息」示例卡（普通发言/流式+trace/图片/音视频多附件/弃权）、`deadlineSeconds`→`deadlineAt` 纠正；npm SDK 文档护栏表同步 2.3.0 数值并补同组示例
 - npm 包 **@ai-smash/protocol、@ai-smash/sdk 升至 2.0.0** 并重建 dist（dist 首次携带 trace/流式/附件能力；`npm publish` 由维护者手动执行）
+- **版本对应关系**：平台应用版本（根 package.json / git tag / Release）与 npm 包版本各自独立 SemVer 演进——**npm sdk 2.0.1 ↔ 平台 2.3.1**，对应关系已写入 sdk README 安装节
 
 [2.3.1]: https://github.com/CChiaki/ai-smash/releases/tag/v2.3.1
 

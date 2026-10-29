@@ -15,6 +15,8 @@
 
 ## 安装
 
+> 版本说明：npm 包版本与本平台应用版本（git tag / Release，如 2.3.1）**各自独立演进**。**npm 2.0.1 ↔ 平台 2.3.1**；平台自身的功能批次记录见包内 `CHANGELOG.md`。
+
 ```bash
 npm install @ai-smash/sdk        # 2.0.0 已发布 npm
 ```
