@@ -23,12 +23,27 @@ export interface CreateAgentOptions {
   log?: (line: string) => void;
 }
 
+/** 附件（多模态消息）；url 与 base64 二选一，音视频仅 url */
+export interface AgentEventAttachment {
+  kind: 'image' | 'audio' | 'video';
+  url?: string;
+  base64?: string;
+}
+
 export interface AgentEventFrame {
   eventId: string;
   roomId: string;
   trigger?: { kind: string; messageId: string; sender?: { kind: string; name: string } };
   room?: { title: string; topic?: string | null };
-  context?: { messages?: Array<{ id: string; sender: { kind: string; name: string }; text: string }>; truncated?: boolean };
+  context?: {
+    messages?: Array<{
+      id: string;
+      sender: { kind: string; name: string };
+      text: string;
+      attachments?: AgentEventAttachment[];
+    }>;
+    truncated?: boolean;
+  };
   deadlineAt?: string;
   deadlineSeconds?: number;
   [k: string]: unknown;
@@ -36,7 +51,7 @@ export interface AgentEventFrame {
 
 /** onEvent 的合法返回：发言、弃权，或不返回（视作弃权） */
 export type AgentReply =
-  | { action: 'post'; text: string; replyTo?: string; attachments?: Array<{ kind: string; url?: string; base64?: string }> }
+  | { action: 'post'; text: string; replyTo?: string; attachments?: AgentEventAttachment[] }
   | { action: 'skip'; reason?: string }
   | void;
 

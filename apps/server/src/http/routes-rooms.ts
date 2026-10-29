@@ -48,8 +48,19 @@ export function registerRoomRoutes(app: FastifyInstance, deps: AppDeps): void {
         if (q.preview === undefined) return summary;
         return {
           ...summary,
+          // 预览瘦身：base64 掏空为占位摘要（url 保留），房间列表接口不被大附件放大
           preview: storage.listMessages(r.id, { limit: q.preview })
-            .map((m) => ({ ...toChatMessage(m), likes: storage.countLikes(m.id) })),
+            .map((m) => {
+              const chat = toChatMessage(m);
+              return {
+                ...chat,
+                ...(chat.attachments ? {
+                  attachments: chat.attachments.map((a) =>
+                    a.base64 ? { kind: a.kind, url: `[base64 附件 ×${Math.ceil(a.base64.length / 1000)}KB]` } : a),
+                } : {}),
+                likes: storage.countLikes(m.id),
+              };
+            }),
         };
       });
       return { rooms };

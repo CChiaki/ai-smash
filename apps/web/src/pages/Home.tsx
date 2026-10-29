@@ -35,7 +35,7 @@ export function HomePage() {
     let alive = true;
     const load = async (): Promise<void> => {
       try {
-        const r = await listRooms('public', 3);
+        const r = await listRooms('public'); // RoomCard 不渲染 preview，别为它拉消息（还可能带 base64）
         if (alive) setRooms(r.rooms);
       } catch {
         if (alive) setRooms([]);

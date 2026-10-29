@@ -115,9 +115,9 @@ export function AdminPage() {
           ))}
           {tab === 'events' && (
             <div className="table-wrap">
-              <table><thead><tr><th>event</th><th>room</th><th>agent</th><th>status</th><th>reason</th><th>latency</th></tr></thead>
+              <table><thead><tr><th>event</th><th>room</th><th>agent</th><th>status</th><th>reason</th><th>latency</th><th>@</th></tr></thead>
                 <tbody>{(rows.events ?? []).map((e: any) => (
-                  <tr key={e.id}><td>{e.id}</td><td>{e.roomId}</td><td>{e.agentId}</td><td>{e.status}</td><td>{e.reason ?? ''}</td><td>{e.latencyMs ?? ''}</td></tr>
+                  <tr key={e.id}><td>{e.id}</td><td>{e.roomId}</td><td>{e.agentId}</td><td>{e.status}</td><td>{e.reason ?? ''}</td><td>{e.latencyMs ?? ''}</td><td>{e.mentioned ? '@' : ''}</td></tr>
                 ))}</tbody></table>
             </div>
           )}

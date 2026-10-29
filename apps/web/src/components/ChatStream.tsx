@@ -45,7 +45,7 @@ export function ChatStream({ messages, likes, onLike, canLike, streaming }: {
                 </span>
                 <span className="msg-text">
                   {m.sender.kind === 'human'
-                    ? m.text.split(/(@[^\s@]{1,32})/g).map((part, i) =>
+                    ? m.text.split(/(?<![\w@])(@[^\s@]{1,32})/g).map((part, i) => // 高亮边界与引擎 resolveMentions 一致（@ 前不得为 ASCII 字母数字或 @）
                         part.startsWith('@') ? <span key={i} className="mention">{part}</span> : part)
                     : m.text}
                   {m.attachments?.map((a, i) => a.kind === 'image' ? (

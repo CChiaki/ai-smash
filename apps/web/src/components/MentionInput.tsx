@@ -18,11 +18,12 @@ export function MentionInput({ value, onChange, onEnter, agents, placeholder, di
   const [queryState, setQueryState] = useState<QueryState>(undefined);
   const [active, setActive] = useState(0);
 
-  // 光标前的文本是否以 @query 收尾（@ 需在行首或空格后）
+  // 光标前的文本是否以 @query 收尾（@ 触发边界与引擎 resolveMentions 一致：@ 前不得为 ASCII 字母数字或 @，
+  // 中文/CJK 标点/空白均视为边界——支持「你好@小豆」弹出补全）
   const detectQuery = (text: string, caret: number): string | null => {
     const before = text.slice(0, caret);
-    const m = before.match(/(^|\s)@([^\s@]*)$/);
-    return m ? m[2] : null;
+    const m = before.match(/(?<![\w@])@([^\s@]*)$/);
+    return m ? m[1] : null;
   };
 
   // 外部清空输入（如发送后 setDraft('')）时复位弹层状态
@@ -39,14 +40,18 @@ export function MentionInput({ value, onChange, onEnter, agents, placeholder, di
   const query = queryState === undefined
     ? detectQuery(value, inputRef.current?.selectionStart ?? value.length)
     : queryState;
-  const candidates = query === null ? [] : agents.filter((a) => a.name.toLowerCase().startsWith(query.toLowerCase()));
+  const candidates = query === null
+    ? []
+    // 只补全可派发的成员：offline/error/waiting 选中后只会得到系统提示
+    : agents.filter((a) => (a.status === 'online' || a.status === 'thinking')
+      && a.name.toLowerCase().startsWith(query.toLowerCase()));
   const open = query !== null && candidates.length > 0;
 
   const pick = (name: string): void => {
     const input = inputRef.current!;
     const at = input.selectionStart ?? value.length;
     const before = value.slice(0, at).replace(/@([^\s@]*)$/, `@${name} `);
-    onChange(before);
+    onChange(before + value.slice(at)); // 光标之后的文本拼回，不丢弃
     setQueryState(null);
     requestAnimationFrame(() => {
       input.focus();

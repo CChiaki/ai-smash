@@ -65,4 +65,46 @@ describe('发言节奏调优（2.3）', () => {
       w.storage.listMessages('lobby').filter((m) => m.text === '追问二')[0].id,
     );
   });
+
+  it('@提及打断排队不丢追问：点名轮结束后追问仍被补派', () => {
+    vi.setSystemTime(t0());
+    const w = makeWorld({ cooldownMs: 2000 } as any);
+    const dispatched = record(w.bus, Topics.eventDispatch);
+    const a = addAgent(w, '小豆');
+    join(w, a.id);
+    w.engine.humanPost('lobby', 'key_1', '阿伟', '第一问');
+    const ev1 = dispatched[0];
+    w.engine.agentPost(a.id, ev1.eventId, '答第一问');      // 进入 2s 冷却，排队定时器尚未武装
+    vi.advanceTimersByTime(500);
+    w.engine.humanPost('lobby', 'key_1', '阿伟', '排队追问'); // 冷却中 → 排队，定时器武装
+    vi.advanceTimersByTime(300);
+    w.engine.humanPost('lobby', 'key_1', '阿伟', '@小豆 优先答这个'); // @ 打断：立即派发并作废排队定时器
+    const mentionEv = dispatched.at(-1)!;
+    expect(mentionEv.trigger.messageId).toBe(
+      w.storage.listMessages('lobby').filter((m) => m.text === '@小豆 优先答这个')[0].id,
+    );
+    w.engine.agentPost(a.id, mentionEv.eventId, '答点名');   // 点名轮发言 → 重置冷却
+    vi.advanceTimersByTime(2000);                            // 点名轮冷却到期 → 排队追问必须被补派
+    expect(dispatched.at(-1)!.trigger.messageId).toBe(
+      w.storage.listMessages('lobby').filter((m) => m.text === '排队追问')[0].id,
+    );
+  });
+
+  it('在途期间到达的追问：发言落库后冷却未过也不丢，到期补派', () => {
+    vi.setSystemTime(t0());
+    const w = makeWorld({ cooldownMs: 2000 } as any);
+    const dispatched = record(w.bus, Topics.eventDispatch);
+    const a = addAgent(w, '小豆');
+    join(w, a.id);
+    w.engine.humanPost('lobby', 'key_1', '阿伟', '第一问');
+    const ev1 = dispatched[0];
+    w.engine.humanPost('lobby', 'key_1', '阿伟', '在途追问'); // agent 在途 → 合并为 pending
+    w.engine.agentPost(a.id, ev1.eventId, '答第一问');        // 发言落库 → 冷却未过：原实现此处丢弃
+    expect(dispatched).toHaveLength(1);
+    vi.advanceTimersByTime(2000);                             // 冷却到期 → 补派
+    expect(dispatched).toHaveLength(2);
+    expect(dispatched[1].trigger.messageId).toBe(
+      w.storage.listMessages('lobby').filter((m) => m.text === '在途追问')[0].id,
+    );
+  });
 });

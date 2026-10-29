@@ -246,18 +246,7 @@ export class RoomEngine {
       if (rt.cooldownUntil > Date.now()) {
         // 冷却排队：追问不丢，到期自动补派（多条只留最新）
         rt.pendingMessageId = message.id;
-        if (!rt.cooldownTimer) {
-          const delay = Math.max(50, rt.cooldownUntil - Date.now());
-          rt.cooldownTimer = setTimeout(() => {
-            rt.cooldownTimer = null;
-            const pending = rt.pendingMessageId;
-            rt.pendingMessageId = null;
-            if (pending && this.canDispatch(roomId, ra.agentId)) {
-              this.dispatchToAgent(roomId, ra.agentId, pending, this.buildContext(roomId));
-            }
-          }, delay);
-          rt.cooldownTimer.unref?.();
-        }
+        this.armCooldownDispatch(roomId, ra.agentId);
         continue;
       }
       if (!this.canDispatch(roomId, ra.agentId)) continue;
@@ -274,7 +263,9 @@ export class RoomEngine {
     const matched: AgentRow[] = [];
     const unknown: string[] = [];
     const seen = new Set<string>();
-    for (const m of text.matchAll(/(?:^|\s)@([^\s@]{1,32})/g)) {
+    // @ 触发边界：@ 前不得为 ASCII 字母数字或 @（中文/CJK 标点/空白均视为边界，支持「你好@小豆」，
+    // 同时不误伤邮箱 test@example.com）。引擎派发 / web 补全 MentionInput / web 高亮 ChatStream 三处一致，勿单边漂移
+    for (const m of text.matchAll(/(?<![\w@])@([^\s@]{1,32})/g)) {
       const raw = m[1];
       const key = raw.toLowerCase();
       if (seen.has(key)) continue;
@@ -473,8 +464,29 @@ export class RoomEngine {
     const blocked = spoke && rt.cooldownUntil > Date.now() && !bypass;
     if (pending && !blocked && this.canDispatch(roomId, agentId, { mention: bypass })) {
       this.dispatchToAgent(roomId, agentId, pending, this.buildContext(roomId), bypass ? { mentioned: true } : undefined);
+    } else if (pending && blocked) {
+      // 追问不丢：发言落入冷却时不再作废 pending，按剩余冷却重新排队补派
+      // （覆盖 @提及作废排队定时器、在途期间到达的追问两种丢失路径）
+      rt.pendingMessageId = pending;
+      this.armCooldownDispatch(roomId, agentId);
     }
     this.emitPresence(roomId);
+  }
+
+  /** 冷却排队：按剩余冷却武装补派定时器（多条只留最新；到期经 canDispatch 常规校验后补派） */
+  private armCooldownDispatch(roomId: string, agentId: string): void {
+    const rt = this.runtimeOf(roomId, agentId);
+    if (rt.cooldownTimer) return;
+    const delay = Math.max(50, rt.cooldownUntil - Date.now());
+    rt.cooldownTimer = setTimeout(() => {
+      rt.cooldownTimer = null;
+      const pending = rt.pendingMessageId;
+      rt.pendingMessageId = null;
+      if (pending && this.canDispatch(roomId, agentId)) {
+        this.dispatchToAgent(roomId, agentId, pending, this.buildContext(roomId));
+      }
+    }, delay);
+    rt.cooldownTimer.unref?.();
   }
 
   private runtimeOf(roomId: string, agentId: string): AgentRoomRuntime {

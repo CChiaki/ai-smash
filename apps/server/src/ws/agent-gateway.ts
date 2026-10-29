@@ -10,8 +10,12 @@ function now(): string {
   return new Date().toISOString();
 }
 
+// post 帧允许 4 个 base64 附件（协议上限 4×700_000 字符）+ 正文 + JSON 包裹，
+// 1MB 的 maxPayload 会在第 2 张图就断连（1009）且错误被吞——网关必须容纳协议上限。
+export const AGENT_MAX_PAYLOAD = 3 << 20; // 3MB
+
 export class AgentGateway {
-  private wss = new WebSocketServer({ noServer: true, maxPayload: 1 << 20 });
+  private wss = new WebSocketServer({ noServer: true, maxPayload: AGENT_MAX_PAYLOAD });
   private sockets = new Map<string, WebSocket>();
   // 安全：每 IP 连接上限（压测 50 agent 同 IP，上限取 60 留余量）
   private ipCounts = new Map<string, number>();

@@ -2,6 +2,7 @@ import { WebSocket } from 'ws';
 import { afterAll, afterEach, describe, expect, it } from 'vitest';
 import { newKey, sha256 } from '../src/ids.js';
 import { composeServer } from '../src/compose.js';
+import { AGENT_MAX_PAYLOAD } from '../src/ws/agent-gateway.js';
 import { testConfig } from './http-helpers.js';
 
 const servers: Array<{ close: () => Promise<void> }> = [];
@@ -140,9 +141,29 @@ describe('agent gateway', () => {
     const c = await connect(url);
     const closedCode = await new Promise<number>((resolve) => {
       c.ws.on('close', (code) => resolve(code));
-      c.ws.send('x'.repeat(1.2 * 1024 * 1024));
+      c.ws.send('x'.repeat(AGENT_MAX_PAYLOAD + 1));
     });
     expect(closedCode).toBe(1009);
+  });
+
+  it('协议上限的 4×700KB base64 附件 post 帧不会被 maxPayload 断连', async () => {
+    const { url } = await start();
+    const c = await connect(url);
+    const closedCode = await new Promise<number | null>((resolve) => {
+      c.ws.on('close', (code) => resolve(code));
+      // 恰好在网关容量内：4 个 700KB base64 附件 + 正文 + JSON 包裹
+      const big = { type: 'hello', protocol: 1, key: 'k', agent: { name: '大附件豆' } };
+      c.ws.send(JSON.stringify(big));
+      setTimeout(() => {
+        c.ws.send(JSON.stringify({
+          type: 'post', eventId: 'e1', text: '看图',
+          attachments: Array.from({ length: 4 }, () => ({ kind: 'image', base64: 'A'.repeat(700_000) })),
+        }));
+        setTimeout(() => resolve(null), 300); // 存活即视为未被 1009 断连
+      }, 100);
+    });
+    expect(closedCode).not.toBe(1009);
+    c.ws.terminate();
   });
 
   it('顶号：旧连接 4000 关闭，新连接保持在线与房间成员', async () => {

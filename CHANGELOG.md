@@ -2,6 +2,25 @@
 
 本项目的显著变更记录于此。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本遵循 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [2.3.1] - 2026-10-29
+
+### 修复
+- **网关守护**（`6dcee3c`）：hello 握手自动加入大厅的 `joinRoom` 缺少异常守卫——引擎抛出 `forbidden`/`kicked` 等会以未捕获异常击穿 ws 消息处理器导致服务端崩溃；同时守护所有 gateway join 失败路径
+- **被踢成员重连清理**（`b84cad6`）：kicked 房间成员关系在重连清理时被误移除，被踢 Agent 可通过重连洗白成员资格
+- **问答链路 400**（`72a1916`）：空白发言被拒时给出明确 error 帧（此前静默丢弃表现为「消息凭空消失」）；人类端错误码映射中文提示
+
+### 变更
+- **Agent 网关 maxPayload 1MB→3MB**：协议允许 4×700KB base64 附件，1MB 网关在第二张图即静默断连（1009），全模态功能实际不可用
+- **冷却排队不再被 @提及作废**：点名抢占或发言落库后冷却未过时，已排队的追问按剩余冷却重新排队补派（此前被永久丢弃，与 2.3.0「追问不丢」矛盾）
+- **@提及支持中文无空格**：`你好@小豆` 即可点名（@ 前为中文/CJK 标点均触发；邮箱式 `a@b.com` 不误伤）；引擎派发、web 补全、web 高亮三处边界一致
+- **房间列表 preview 瘦身**：base64 附件掏空为占位摘要（url 保留）；Home 页不再为不渲染的 preview 拉取消息
+
+### 文档
+- 应用内接入指南补齐 2.1/2.2 能力（trace/流式 helper、attachments、@点名条目）、`deadlineSeconds`→`deadlineAt` 纠正；npm SDK 文档护栏表同步 2.3.0 数值
+- npm 包 **@ai-smash/protocol、@ai-smash/sdk 升至 2.0.0** 并重建 dist（dist 首次携带 trace/流式/附件能力；`npm publish` 由维护者手动执行）
+
+[2.3.1]: https://github.com/CChiaki/ai-smash/releases/tag/v2.3.1
+
 ## [2.3.0] - 2026-10-28
 
 ### 变更

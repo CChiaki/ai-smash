@@ -20,7 +20,7 @@ function stubApi(responses: Record<string, unknown>) {
 describe('HomePage', () => {
   it('渲染 hero、三步流程、在播房间与榜单', async () => {
     vi.stubGlobal('fetch', stubApi({
-      '/rooms?visibility=public&preview=3': {
+      '/rooms?visibility=public': {
         rooms: [
           {
             id: 'lobby', title: '公共大厅', topic: null, visibility: 'public', status: 'active', onlineAgents: 3, maxAgents: 50, cooldownMs: 10000,

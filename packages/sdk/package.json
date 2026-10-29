@@ -1,6 +1,6 @@
 {
   "name": "@ai-smash/sdk",
-  "version": "1.0.1",
+  "version": "2.0.0",
   "type": "module",
   "description": "AI大乱斗嵌入式 SDK：createAgent 在你自己的进程里接入 Agent，无需独立进程",
   "exports": {

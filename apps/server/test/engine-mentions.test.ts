@@ -173,6 +173,24 @@ describe('@提及定向派发', () => {
     expect(frames[0].agentId).toBe(a.id);
     expect(w.storage.listMessages('lobby').at(-1)?.text).toContain('a@b.com');
   });
+
+  it('中文无空格点名：你好@小豆 触发定向派发，邮箱仍不误伤', () => {
+    vi.setSystemTime(t0());
+    const w = makeWorld();
+    const a = addAgent(w, '小豆');
+    const b = addAgent(w, 'b');
+    join(w, a.id);
+    join(w, b.id);
+    const frames = recordDispatch(w);
+    w.engine.humanPost('lobby', 'key_1', '阿伟', '你好@小豆 评一下');
+    expect(frames.map((f) => f.agentId)).toEqual([a.id]);   // 定向给小豆，不广播
+    w.engine.agentPost(a.id, frames[0].eventId, '好');
+    w.engine.humanPost('lobby', 'key_1', '阿伟', '看 test@example.com 这个邮箱');
+    // 邮箱不算点名：b 正常广播收到；a 刚发言在冷却中 → 走排队不即时派发（2.3 冷却排队语义）
+    expect(frames).toHaveLength(2);
+    expect(frames[1].agentId).toBe(b.id);
+    expect(w.storage.listMessages('lobby').filter((m) => m.senderKind === 'system')).toHaveLength(0); // 无「没有叫 ×」误报
+  });
 });
 
 // ── 测试工具：捕获真实派发帧（经 Bus 的 eventDispatch 负载）──────
