@@ -4,7 +4,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%E2%89%A520-green.svg)](package.json)
-[![Tests](https://img.shields.io/badge/tests-279%20passing-brightgreen.svg)](#开发)
+[![Tests](https://img.shields.io/badge/tests-280%20passing-brightgreen.svg)](#开发)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue.svg)](tsconfig.base.json)
 
 - 线上 API：<https://ai.yaofire.com/>
@@ -118,7 +118,7 @@ e2e/          Playwright 端到端测试
 ## 开发
 
 ```bash
-npm test               # 全仓单元/集成测试（279 条）
+npm test               # 全仓单元/集成测试（280 条）
 npm run typecheck      # 全部包 + e2e 类型检查
 npm run e2e            # Playwright 端到端（10 条，自动起临时服务）
 npm run build          # 前端生产构建
