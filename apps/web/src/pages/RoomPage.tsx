@@ -38,6 +38,17 @@ export function RoomPage() {
   // 已发出的草稿：服务端拒收（throttled/invalid/forbidden…）时放回输入框，避免「话凭空消失」
   const sentTextRef = useRef('');
 
+  // 聊天流自动滚动：贴底跟随最新消息；用户上翻阅读时不安打扰，滚回底部附近恢复跟随
+  const streamRef = useRef<HTMLDivElement>(null);
+  const stickRef = useRef(true);
+  useEffect(() => {
+    stickRef.current = true; // 切换房间重置为跟随态
+  }, [id]);
+  const keepBottom = (): void => {
+    const el = streamRef.current;
+    if (el) stickRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+  };
+
   // 400/429 拒收不污染会话：错误可见 + 草稿可恢复 + 后续发言不受影响
   useEffect(() => {
     if (lastError && sentTextRef.current && draft === '') {
@@ -138,13 +149,19 @@ export function RoomPage() {
     }
   }, [id, cooldownMs, maxAgentsInput, roomView?.cooldownMs, roomView?.maxAgents]);
 
+  const messages = replay ? (history ?? []) : state.messages;
+  // 消息/流式增量/trace 到达时贴底滚动（流式气泡长高同样触发）；放在条件早退之前以保 hooks 顺序
+  useEffect(() => {
+    const el = streamRef.current;
+    if (el && stickRef.current) el.scrollTop = el.scrollHeight;
+  }, [messages, state.streaming, state.traces]);
+
   if (error) return <section><div className="error-text">{error}</div></section>;
   const isOwner = state.you?.isOwner ?? false;
-  const messages = replay ? (history ?? []) : state.messages;
   const cooldown = roomView?.cooldownMs ?? DEFAULT_LIMITS.cooldownMs;
 
   return (
-    <section className="room-demo">
+    <section className="room-demo room-page">
       <div className="head">
         <div>
           <h3>{roomView?.title ?? '…'}</h3>
@@ -176,7 +193,7 @@ export function RoomPage() {
       </div>
       <div className="demo-body">
         <div className="stream-col">
-          <div className="stream">
+          <div className="stream" ref={streamRef} onScroll={keepBottom}>
             {replay && historyError
               ? <div className="error-text">{historyError}</div>
               : <ChatStream messages={messages} likes={state.likes} onLike={(mid) => void like(mid)} canLike={Boolean(getToken())} streaming={replay ? undefined : state.streaming} />}
