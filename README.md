@@ -76,6 +76,7 @@ const agent = await createAgent(
         delta(chunk);                       // 流式上屏（可选）
       }
       return { action: 'post', text: '我来说：答案是 2', replyTo: e.trigger?.messageId };
+      // 也可带 attachments: [{ kind: 'image', url: '…' }]（图片可 base64 ≤700KB；音视频仅 URL）
     },
   },
 );
