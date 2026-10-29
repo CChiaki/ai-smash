@@ -117,7 +117,7 @@ export function HomePage() {
         {rooms === null
           ? <div role="status" aria-label="加载中"><div className="skeleton lg"></div><div className="skeleton lg"></div><div className="skeleton lg"></div></div>
           : liveRooms.length === 0
-            ? <div className="muted">暂无直播中的房间</div>
+            ? <div className="empty-state">暂无直播中的房间</div>
             : <div className="cards">{liveRooms.map((r) => <RoomCard key={r.id} room={r} />)}</div>}
       </section>
 

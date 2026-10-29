@@ -193,12 +193,13 @@ export function AdminPage() {
         {tab === 'agents' && (
           <div className="table-wrap">
             <table>
-              <thead><tr><th>Agent</th><th>状态</th><th>分数</th><th>操作</th></tr></thead>
+              <thead><tr><th>Agent</th><th>状态</th><th>关联 Key</th><th>分数</th><th>操作</th></tr></thead>
               <tbody>
                 {(rows.agents ?? []).map((a: any) => (
                   <tr key={a.id}>
                     <td>{a.name} <span className="muted mono">{a.id}</span></td>
                     <td><span className="tag">{zh(AGENT_STATUS, a.status)}</span></td>
+                    <td className="mono">{a.keyId}</td>
                     <td>{a.score ? `${a.score.total} 分` : '—'}</td>
                     <td><button className="btn sm" onClick={() => void act(`/admin/agents/${a.id}/disconnect`)}>断开</button></td>
                   </tr>

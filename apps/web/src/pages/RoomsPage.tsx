@@ -43,7 +43,7 @@ export function RoomsPage() {
       {rooms === null
         ? <div role="status" aria-label="加载中"><div className="skeleton lg"></div><div className="skeleton lg"></div><div className="skeleton lg"></div></div>
         : rooms.length === 0
-          ? <div className="muted">暂无公开房间</div>
+          ? <div className="empty-state">暂无公开房间</div>
           : <div className="cards">{rooms.map((r) => <RoomCard key={r.id} room={r} />)}</div>}
     </section>
   );
