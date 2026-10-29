@@ -82,6 +82,7 @@ export interface CreatedRoom {
   inviteCode: string | null;
 }
 
+/** 自建房间目前仅管理端开放（POST /api/admin/rooms）；此封装留给网页端未来开放时使用 */
 export function createRoom(body: {
   title: string; topic?: string; visibility: 'public' | 'private';
 }): Promise<CreatedRoom> {

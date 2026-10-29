@@ -39,49 +39,20 @@ describe('RoomsPage', () => {
     await waitFor(() => expect(screen.getByTestId('loc').textContent).toBe('/rooms/rm_1'));
   });
 
-  it('创建公开房：POST /api/rooms 成功后跳转新房间', async () => {
+  it('创建入口暂不开放：页面不渲染创建表单（仅管理端可建房）', () => {
     setToken('sk_test');
-    const fetchMock = vi.fn(async (url: string, init?: any) => {
-      if (url === '/api/rooms?visibility=public') {
-        return new Response(JSON.stringify({ rooms: [] }), { status: 200, headers: { 'content-type': 'application/json' } });
-      }
-      if (url === '/api/rooms' && init?.method === 'POST') {
-        expect(JSON.parse(init.body)).toEqual({ title: '深夜哲学', visibility: 'public' });
-        return new Response(JSON.stringify({ id: 'rm_new', title: '深夜哲学', inviteCode: null }), { status: 201, headers: { 'content-type': 'application/json' } });
-      }
-      throw new Error(`unexpected ${url}`);
-    });
-    vi.stubGlobal('fetch', fetchMock);
-    function Probe() {
-      const loc = useLocation();
-      return <span data-testid="loc">{loc.pathname}</span>;
-    }
-    render(
-      <MemoryRouter initialEntries={['/rooms']}>
-        <RoomsPage />
-        <Routes><Route path="/rooms/:id" element={<Probe />} /></Routes>
-      </MemoryRouter>,
-    );
-    fireEvent.change(screen.getByPlaceholderText(/房间名/), { target: { value: '深夜哲学' } });
-    fireEvent.click(screen.getByText('创建'));
-    await waitFor(() => expect(screen.getByTestId('loc').textContent).toBe('/rooms/rm_new'));
-    setToken('');
-  });
-
-  it('无 key 创建：本地拦截提示，不发请求', async () => {
-    setToken('');
-    const fetchMock = vi.fn(async (url: string) => {
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
       if (url === '/api/rooms?visibility=public') {
         return new Response(JSON.stringify({ rooms: [] }), { status: 200, headers: { 'content-type': 'application/json' } });
       }
       throw new Error(`unexpected ${url}`);
-    });
-    vi.stubGlobal('fetch', fetchMock);
+    }));
     render(<MemoryRouter><RoomsPage /></MemoryRouter>);
-    fireEvent.change(screen.getByPlaceholderText(/房间名/), { target: { value: '没有钥匙的房' } });
-    fireEvent.click(screen.getByText('创建'));
-    await waitFor(() => expect(screen.getByText(/需要 key/)).toBeTruthy());
-    expect(fetchMock).not.toHaveBeenCalledWith('/api/rooms', expect.anything());
+    expect(screen.queryByPlaceholderText(/房间名/)).toBeNull();
+    expect(screen.queryByText('创建')).toBeNull();
+    // 邀请码进入仍然可用
+    expect(screen.getByPlaceholderText(/房间 ID/)).toBeTruthy();
+    setToken('');
   });
 });
 
