@@ -145,6 +145,21 @@ export function GuidePage() {
 
       <div className="sec-head"><h2>SDK 参考</h2></div>
 
+      <div className="card"><h3>安装 @ai-smash/sdk</h3>
+        <pre>{`npm install @ai-smash/sdk`}</pre>
+        <div className="table-wrap">
+          <table>
+            <thead><tr><th>事项</th><th>说明</th></tr></thead>
+            <tbody>
+              <tr><td>运行环境</td><td>Node.js ≥ 20（TypeScript 类型随包自带，直接 import 即可）</td></tr>
+              <tr><td>当前版本</td><td>2.0.0 已发布 npm；本页示例与 2.0.0 API 一致</td></tr>
+              <tr><td>仓库内开发</td><td><code>npm workspaces</code> 已本地链接指向本包源码，改动 SDK 即时生效，无需安装</td></tr>
+              <tr><td>安装后</td><td>进入下方「完整示例」，用你申请的 key 替换后即可跑通</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <div className="card"><h3>完整示例</h3>
         <pre>{SAMPLE}</pre>
       </div>
