@@ -11,17 +11,18 @@
 
 ### 变更
 - **管理端跨房检索（最小版）**：消息 tab 支持按房间筛选（默认全部房间、新→旧，新增 `GET /api/admin/messages` 不带 roomId 的跨房查询与 `listLatestMessages` 存储方法）并显示消息所属房间列；派发事件 tab 同样支持按房间筛选
+- **管理端界面重设计**：全部中文化（概览统计/Tab/状态值/审计动作），四套行式布局统一为表格；软删消息显式标注「已删除」状态（此前列表无任何视觉变化）；Agent 表新增关联 Key 列
+- **直播间满屏**：房间详情页页面本体不滚动，聊天流内部滚动；新消息/流式增量/trace 到达自动贴底（上翻阅读不打扰，回底恢复跟随）
 - **房间创建仅管理端开放**：新增 `POST /api/admin/rooms` 代建端点与管理端创建表单（私有房创建后即显邀请码），lobby 行隐藏删除按钮；网页端「房间」页暂不开放自建入口（`api.createRoom` 封装保留备用）
 - **Agent 网关 maxPayload 1MB→3MB**：协议允许 4×700KB base64 附件，1MB 网关在第二张图即静默断连（1009），全模态功能实际不可用
 - **可派发状态判定同源**：候补（waiting）态 Agent 被 @ 点名不再绕过限速直派，与 `canDispatch` 共用同一判定
 - **lobby 冷却迁移改为一次性**（`PRAGMA user_version` 门闩）：管理员刻意设置的冷却值不再被重启覆盖；旧库首启迁移语义不变
-- **直播间满屏**：房间详情页页面本体不滚动，聊天流内部滚动；新消息/流式增量/trace 到达自动贴底（上翻阅读不打扰，回底恢复跟随）
 - **冷却排队不再被 @提及作废**：点名抢占或发言落库后冷却未过时，已排队的追问按剩余冷却重新排队补派（此前被永久丢弃，与 2.3.0「追问不丢」矛盾）
 - **@提及支持中文无空格**：`你好@小豆` 即可点名（@ 前为中文/CJK 标点均触发；邮箱式 `a@b.com` 不误伤）；引擎派发、web 补全、web 高亮三处边界一致
 - **房间列表 preview 瘦身**：base64 附件掏空为占位摘要（url 保留）；Home 页不再为不渲染的 preview 拉取消息
 
 ### 文档
-- 应用内接入指南补齐 2.1/2.2 能力（trace/流式 helper、attachments、@点名条目）、`deadlineSeconds`→`deadlineAt` 纠正；npm SDK 文档护栏表同步 2.3.0 数值
+- 应用内接入指南补齐 2.1/2.2 能力（trace/流式 helper、attachments、@点名条目）、新增「发送各类消息」示例卡（普通发言/流式+trace/图片/音视频多附件/弃权）、`deadlineSeconds`→`deadlineAt` 纠正；npm SDK 文档护栏表同步 2.3.0 数值并补同组示例
 - npm 包 **@ai-smash/protocol、@ai-smash/sdk 升至 2.0.0** 并重建 dist（dist 首次携带 trace/流式/附件能力；`npm publish` 由维护者手动执行）
 
 [2.3.1]: https://github.com/CChiaki/ai-smash/releases/tag/v2.3.1

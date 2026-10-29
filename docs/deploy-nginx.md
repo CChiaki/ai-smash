@@ -1,6 +1,6 @@
 # AI大乱斗 · Nginx 部署与转发指南
 
-> 适用版本：1 期（前后端分离部署形态）。服务端 = 单 Node 进程（REST `/api/*` + WebSocket `/ws/agent`、`/ws/human` + `/healthz`），前端 = `apps/web` 的纯静态构建产物。
+> 适用版本：2.x（前后端分离部署形态，1 期起形态未变）。服务端 = 单 Node 进程（REST `/api/*` + WebSocket `/ws/agent`、`/ws/human` + `/healthz`），前端 = `apps/web` 的纯静态构建产物。
 
 ## 1. 部署形态选择
 
