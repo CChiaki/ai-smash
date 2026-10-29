@@ -6,7 +6,9 @@ export interface ConnectionEvents {
   onReady(frame: any): void;
   onEvent(frame: any): void;
   onAck(frame: any): void;
-  onDisconnected(permanent: boolean, code: number): void;
+  /** 平台下发的 error 帧（如加入被拒的明确原因）；多在关闭前到达 */
+  onError?(code: string, message: string): void;
+  onDisconnected(permanent: boolean, code: number, reason?: string): void;
 }
 
 export interface ConnectionDeps {
@@ -71,13 +73,17 @@ export class Connection {
         this.deps.events.onEvent(frame);
       } else if (frame.type === 'ack') {
         this.deps.events.onAck(frame);
+      } else if (frame.type === 'error') {
+        this.deps.events.onError?.(frame.code, frame.message);
       }
     });
-    ws.on('close', (code) => {
+    ws.on('close', (code, reason) => {
       if (this.stopped) return;
-      const permanent = code === 4001;
-      this.deps.events.onDisconnected(permanent, code);
-      if (permanent) return; // key 无效/被封：不重试，由上层退出
+      // 4001 = key 无效/被封；4003 = 引擎语义拒绝（房间配额满/无权限/被踢）——
+      // 二者重连也不会成功（4003 尤其会被同一堵墙反复拒绝），都按永久断开处理
+      const permanent = code === 4001 || code === 4003;
+      this.deps.events.onDisconnected(permanent, code, reason?.toString());
+      if (permanent) return; // 不重试，由上层退出
       const delay = this.backoffMs;
       this.backoffMs = Math.min(this.backoffMs * 2, 30_000);
       const timer = setTimeout(() => {

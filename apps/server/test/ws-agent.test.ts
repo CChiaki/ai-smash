@@ -184,4 +184,24 @@ describe('agent gateway', () => {
     expect(handle.storage.getRoomAgent('lobby', ready2.agentId)?.status).toBe('active');
     c2.ws.terminate();
   });
+
+  it('同 key 第 4 个 agent：先收明确原因的 error 帧，再被 4003 关闭', async () => {
+    const { handle, url } = await start();
+    const raw = newKey();
+    handle.storage.createKey({ id: 'key_quota', hash: sha256(raw), label: null, createdAt: 't' });
+    const kept = [];
+    for (let i = 0; i < 3; i++) { // 单 key 单房上限 3（DEFAULT_LIMITS.keyAgentsPerRoom）
+      const c = await connect(url);
+      send(c.ws, { type: 'hello', protocol: 1, key: raw, agent: { name: `豆${i}` } });
+      await next(c.frames, 'ready');
+      kept.push(c);
+    }
+    const c4 = await connect(url);
+    send(c4.ws, { type: 'hello', protocol: 1, key: raw, agent: { name: '豆4' } });
+    const err = await next(c4.frames, 'error');
+    expect(err.code).toBe('forbidden');
+    expect(err.message).toContain('上限'); // 人话原因：先于关闭帧到达
+    expect((await c4.closed).code).toBe(4003);
+    for (const c of kept) c.ws.terminate();
+  });
 });

@@ -97,6 +97,10 @@ export async function createAgent(
   const log = options.log ?? (() => {});
   let agentId = '';
   let stopped = false;
+  // 启动期（收到 ready 前）被永久关闭：立即以真实原因失败，而不是傻等 15s 超时
+  const boot = { ready: false, reject: null as null | ((e: Error) => void) };
+  // 平台 error 帧的人话原因（如加入被拒），关闭前到达—— fatal 时优先呈现
+  let lastPlatformError: string | null = null;
   const connection = new Connection({
     url: options.url ?? 'ws://localhost:8787/ws/agent',
     hello: {
@@ -125,11 +129,16 @@ export async function createAgent(
       onAck: (frame: any) => {
         if (frame.status === 'rejected') log(`ack rejected: ${frame.reason}`);
       },
-      onDisconnected: (permanent, code) => {
-        if (permanent) {
-          stopped = true;
-          handlers.onFatal?.(`key 无效或被封（关闭码 ${code}），SDK 已停止`);
-        }
+      onError: (code, message) => {
+        lastPlatformError = message;
+        log(`platform error [${code}]: ${message}`);
+      },
+      onDisconnected: (permanent, code, reason) => {
+        if (!permanent) return;
+        stopped = true;
+        const msg = lastPlatformError ?? describeFatal(code, reason);
+        if (!boot.ready && boot.reject) boot.reject(new Error(msg));
+        handlers.onFatal?.(msg);
       },
     };
   }
@@ -183,7 +192,8 @@ export async function createAgent(
   await new Promise<void>((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('连接超时：未在 15 秒内收到 ready（检查 url / 网络 / 代理）')), 15_000);
     const original = handlers.onReady;
-    handlers.onReady = (info) => { clearTimeout(timer); original?.(info); resolve(); };
+    handlers.onReady = (info) => { clearTimeout(timer); boot.ready = true; original?.(info); resolve(); };
+    boot.reject = (e) => { clearTimeout(timer); reject(e); };
     connection.start();
   });
 
@@ -199,4 +209,14 @@ async function resolveProxyAgent(proxyUrl?: string): Promise<Agent | undefined> 
   if (!proxyUrl) return undefined;
   const { HttpsProxyAgent } = await import('https-proxy-agent');
   return new HttpsProxyAgent(proxyUrl) as unknown as Agent;
+}
+
+/** 永久关闭码 → 接入者能看懂的失败原因 */
+function describeFatal(code: number, reason?: string): string {
+  const suffix = reason ? ` ${reason}` : '';
+  if (code === 4001) return `key 无效或被封（关闭码 4001${suffix}），SDK 已停止`;
+  if (code === 4003) {
+    return `连接被平台拒绝（${reason ?? 'forbidden'}）：通常是该 key 在此房间的 Agent 数已达上限（同一房间 3 个），或 key 无进入权限；SDK 已停止`;
+  }
+  return `连接被平台关闭（关闭码 ${code}${suffix}），SDK 已停止`;
 }

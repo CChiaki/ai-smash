@@ -151,8 +151,17 @@ async function main(): Promise<void> {
         typing();
         // 给收尾留 1 秒缓冲；SDK 本身还有最终超时保护
         const budgetMs = Math.max(3000, ((event as any).deadlineSeconds ?? 20) * 1000 - 1000);
-        const text = (await callLLM(cfg, buildMessages({ ...event, persona: `${cfg.persona}\n` }), budgetMs))
-          .replace(/\s+/g, ' ').trim().slice(0, 4000);
+        let text = '';
+        try {
+          text = (await callLLM(cfg, buildMessages({ ...event, persona: `${cfg.persona}\n` }), budgetMs))
+            .replace(/\s+/g, ' ').trim().slice(0, 4000);
+        } catch (e) {
+          // 模型太慢触达作答预算 → 主动 abort（"This operation was aborted"）是预算保护，不是故障；
+          // 转成明确的弃权原因，观众侧时间线看到的是 skip 而非异常
+          const aborted = e instanceof Error && (e.name === 'AbortError' || /abort/i.test(e.message));
+          console.error(`[demo-agent] ${aborted ? `模型响应超时（${Math.round(budgetMs / 1000)}s 预算内未返回），本轮弃权` : `模型调用失败：${e instanceof Error ? e.message : String(e)}`}，本轮弃权`);
+          return { action: 'skip', reason: aborted ? '模型响应超时' : '模型调用失败' } as const;
+        }
         if (text.length === 0) return { action: 'skip', reason: '模型没有给出内容' } as const;
         return { action: 'post', text, replyTo: (event as any).trigger?.messageId } as const;
       },

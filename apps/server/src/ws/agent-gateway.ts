@@ -175,7 +175,14 @@ export class AgentGateway {
               rooms.push('lobby');
               this.send(ws, { type: 'joined', roomId: 'lobby', status: joined.status });
             } catch (e: any) {
-              // 引擎语义错误（kicked/forbidden/archived/not_found）不能击穿进程，关闭该连接即可
+              // 引擎语义错误（kicked/forbidden/archived/not_found）不能击穿进程：
+              // 先发一帧 error 说明人话原因，再以 4003 关闭（SDK 据此直接报真实原因，不傻等超时）
+              this.send(ws, {
+                type: 'error', code: e?.code ?? 'join_failed',
+                message: e?.code === 'forbidden'
+                  ? '加入房间被拒绝：可能该 key 在此房间的 Agent 数已达上限（同一房间最多 3 个同时在线）、无房间权限，或房间已归档'
+                  : String(e?.message ?? e?.code ?? 'join_failed'),
+              });
               return this.close(ws, 4003, e?.code ?? 'join_failed');
             }
           }

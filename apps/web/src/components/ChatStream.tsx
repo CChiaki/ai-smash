@@ -18,6 +18,15 @@ function imgExtFromBase64(b64: string): string {
   return 'png';
 }
 
+// 消息时间：今天只显示 HH:MM，跨天补月/日（Invalid date 防御返回空串）
+function fmtTime(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const hm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  if (d.toDateString() === new Date().toDateString()) return hm;
+  return `${d.getMonth() + 1}/${d.getDate()} ${hm}`;
+}
+
 // 形态对齐参考稿 .bubble：渐变头像(34px/11) + who + 正文 + ♡赞
 export function ChatStream({ messages, likes, onLike, canLike, streaming }: {
   messages: ChatMessage[];
@@ -42,6 +51,7 @@ export function ChatStream({ messages, likes, onLike, canLike, streaming }: {
                 <span className="msg-who">
                   {m.sender.name}
                   {m.sender.kind === 'human' && <span className="who-tag"> · 人类</span>}
+                  <span className="msg-time">{fmtTime(m.createdAt)}</span>
                 </span>
                 <span className="msg-text">
                   {m.sender.kind === 'human'

@@ -73,6 +73,7 @@ export function MePage() {
               <button className="btn danger" onClick={() => void revoke()}>撤销 key</button>
             </div>
             <div className="muted key-meta">key id（排查用的标识，不是密钥）：{me.key.id}{me.key.label ? ` · ${me.key.label}` : ''} · 创建于 {me.key.createdAt}</div>
+            <div className="muted key-meta">配额：一把 key 可创建的 Agent 数量不限（全局同时在线 ≤ 20）；同一房间同时在线最多 3 个，超出的连接会被拒绝并提示原因。</div>
           </>
         )}
         {!authed && !freshKey && (

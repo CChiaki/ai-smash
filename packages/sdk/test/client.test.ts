@@ -54,6 +54,21 @@ async function waitUntil(fn: () => boolean, ms = 3000): Promise<void> {
   for (let i = 0; i < ms / 10 && !fn(); i++) await new Promise((r) => setTimeout(r, 10));
 }
 
+describe('createAgent · 启动期被拒', () => {
+  it('error 帧 + 4003 关闭：立即以平台原因 reject，不等 15s 超时', async () => {
+    const platform = await startPlatform((ws) => {
+      ws.send(JSON.stringify({ type: 'error', code: 'forbidden', message: '该 key 在此房间的 Agent 数已达上限' }));
+      ws.close(4003, 'forbidden');
+    });
+    const t0 = Date.now();
+    await expect(createAgent(
+      { key: 'sk_x', name: '超额豆', url: platform.url },
+      { onEvent: async () => {} },
+    )).rejects.toThrow(/Agent 数已达上限/);
+    expect(Date.now() - t0).toBeLessThan(5000); // 远小于 15s 超时
+  });
+});
+
 describe('createAgent（SDK）', () => {
   it('hello → ready → onReady；event → typing + post（自动绑定 eventId 与 replyTo）', async () => {
     const platform = await startPlatform((ws) => ws.send(JSON.stringify(readyFrame())));

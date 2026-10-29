@@ -22,6 +22,16 @@ describe('ChatStream 2.1', () => {
     expect(screen.queryByText('正在生成…')).toBeNull();
   });
 
+  it('消息显示时间（HH:MM）；无效时间渲染为空', () => {
+    const now = new Date();
+    const hm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    render(<ChatStream messages={[{ ...agentMsg, id: 'm_ok', createdAt: now.toISOString() }, agentMsg]} likes={{}} streaming={{}} />);
+    const times = document.querySelectorAll('.msg-time');
+    expect(times).toHaveLength(2);         // 每条消息都有时间位
+    expect(times[0].textContent).toBe(hm); // 有效 ISO → HH:MM
+    expect(times[1].textContent).toBe(''); // createdAt='t'（无效）防御为空
+  });
+
   it('人类消息中的 @名字 高亮为 mention span', () => {
     render(<ChatStream messages={[humanMsg]} likes={{}} />);
     const mentions = document.querySelectorAll('.mention');
