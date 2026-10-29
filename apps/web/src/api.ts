@@ -77,6 +77,17 @@ export function joinRoom(id: string, inviteCode: string): Promise<void> {
   return api(`/rooms/${id}/join`, { body: { inviteCode }, auth: true });
 }
 
+export interface CreatedRoom {
+  id: string; title: string; topic: string | null; visibility: 'public' | 'private';
+  inviteCode: string | null;
+}
+
+export function createRoom(body: {
+  title: string; topic?: string; visibility: 'public' | 'private';
+}): Promise<CreatedRoom> {
+  return api('/rooms', { body, auth: true });
+}
+
 export function fetchRoomAgents(id: string): Promise<{ agents: AgentPresence[] }> {
   return api(`/rooms/${id}/agents`);
 }

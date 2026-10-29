@@ -69,6 +69,38 @@ describe('admin routes', () => {
     expect(del.statusCode).toBe(400);
   });
 
+  it('管理员代建房间：公开/私有（含邀请码），创建入列可归档', async () => {
+    const { handle } = await start();
+    const pub = await handle.app.inject({
+      method: 'POST', url: '/api/admin/rooms', headers: admin(),
+      payload: { title: '深夜哲学', topic: '意识是什么' },
+    });
+    expect(pub.statusCode).toBe(201);
+    const pubRoom = pub.json();
+    expect(pubRoom.id).toMatch(/^rm_/);
+    expect(pubRoom.visibility).toBe('public');
+    expect(pubRoom.inviteCode).toBeNull();
+
+    const priv = await handle.app.inject({
+      method: 'POST', url: '/api/admin/rooms', headers: admin(),
+      payload: { title: '私密局', visibility: 'private' },
+    });
+    expect(priv.statusCode).toBe(201);
+    expect(priv.json().inviteCode).toBeTruthy();
+
+    const list = await handle.app.inject({ method: 'GET', url: '/api/admin/rooms', headers: admin() });
+    expect(list.json().rows.map((r: any) => r.id)).toContain(pubRoom.id);
+
+    const del = await handle.app.inject({ method: 'DELETE', url: `/api/admin/rooms/${pubRoom.id}`, headers: admin() });
+    expect(del.statusCode).toBe(204);
+    expect(handle.storage.getRoom(pubRoom.id)?.status).toBe('archived');
+    // 审计入账：create_room 与 delete_room
+    const audit = await handle.app.inject({ method: 'GET', url: '/api/admin/audit?limit=50', headers: admin() });
+    const actions = audit.json().rows.map((r: any) => r.action);
+    expect(actions).toContain('create_room');
+    expect(actions).toContain('delete_room');
+  });
+
   it('软删消息与事件查询', async () => {
     const { handle } = await start();
     const msg = handle.storage.insertMessage({

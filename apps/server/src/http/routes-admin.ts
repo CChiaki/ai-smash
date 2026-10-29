@@ -1,8 +1,11 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import { DEFAULT_LIMITS } from '@ai-smash/protocol';
 import type { AppDeps } from '../app.js';
+import { newId, newInviteCode } from '../ids.js';
 import { requireAdmin } from './auth.js';
 import { sendEngineError } from './routes-social.js';
+import { roomSummary } from './room-summary.js';
 
 export function registerAdminRoutes(app: FastifyInstance, deps: AppDeps): void {
   const { storage, engine, agentGateway } = deps;
@@ -59,6 +62,30 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AppDeps): void {
   });
 
   app.get('/api/admin/rooms', guard, async () => ({ rows: storage.listRooms() }));
+
+  // 管理员代建房间：无个人 key 归属（ownerKeyId=null，同 lobby 形态）；私有房自动发邀请码
+  app.post('/api/admin/rooms', guard, async (req, reply) => {
+    const body = z.object({
+      title: z.string().min(1).max(64),
+      topic: z.string().max(200).nullish(),
+      visibility: z.enum(['public', 'private']).default('public'),
+      cooldownMs: z.number().int().min(0).max(60_000).optional(),
+      maxAgents: z.number().int().min(2).max(200).optional(),
+    }).parse(req.body);
+    const room = storage.createRoom({
+      id: newId('rm'),
+      title: body.title,
+      topic: body.topic ?? null,
+      visibility: body.visibility,
+      ownerKeyId: null,
+      inviteCode: body.visibility === 'private' ? newInviteCode() : null,
+      cooldownMs: body.cooldownMs ?? DEFAULT_LIMITS.cooldownMs,
+      maxAgents: Math.min(body.maxAgents ?? DEFAULT_LIMITS.roomMaxAgents, DEFAULT_LIMITS.roomHardCap),
+      at: new Date().toISOString(),
+    });
+    audit('create_room', 'room', room.id, { visibility: body.visibility });
+    return await reply.code(201).send({ ...roomSummary(storage, room), inviteCode: room.inviteCode });
+  });
 
   app.post('/api/admin/rooms/:id/pause', guard, async (req, reply) => {
     const id = (req.params as { id: string }).id;

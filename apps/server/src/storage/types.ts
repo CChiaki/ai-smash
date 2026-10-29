@@ -98,7 +98,7 @@ export interface Storage {
   ensureLobby(input: { title: string; maxAgents: number; at: string }): RoomRow;
   createRoom(input: {
     id: string; title: string; topic: string | null;
-    visibility: 'public' | 'private'; ownerKeyId: string;
+    visibility: 'public' | 'private'; ownerKeyId: string | null;
     inviteCode: string | null; cooldownMs: number; maxAgents: number; at: string;
   }): RoomRow;
   getRoom(id: string): RoomRow | undefined;

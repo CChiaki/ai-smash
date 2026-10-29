@@ -10,6 +10,10 @@ export function AdminPage() {
   const [overview, setOverview] = useState<typeof EMPTY_OVERVIEW | null>(null);
   const [rows, setRows] = useState<Record<string, any[]>>({});
   const [tab, setTab] = useState<'keys' | 'agents' | 'rooms' | 'messages' | 'events' | 'audit'>('keys');
+  // 房间代建：管理员可从管理端直接开房；私有房创建后展示邀请码便于分发
+  const [roomTitle, setRoomTitle] = useState('');
+  const [roomVisibility, setRoomVisibility] = useState<'public' | 'private'>('public');
+  const [roomCreateMsg, setRoomCreateMsg] = useState<string | null>(null);
 
   const call = useCallback(async <T,>(path: string, opts?: Parameters<typeof api<T>>[1]): Promise<T> => {
     return api<T>(path, { ...opts, admin: true });
@@ -53,6 +57,22 @@ export function AdminPage() {
   const act = async (path: string, method = 'POST', body?: unknown): Promise<void> => {
     await call(path, { method, body });
     await load();
+  };
+
+  const createRoomAdmin = async (): Promise<void> => {
+    setRoomCreateMsg(null);
+    if (roomTitle.trim().length === 0) { setError('先给房间起个名字'); return; }
+    try {
+      const r = await call<{ id: string; inviteCode: string | null }>('/admin/rooms', {
+        method: 'POST',
+        body: { title: roomTitle.trim(), visibility: roomVisibility },
+      });
+      setRoomTitle('');
+      setRoomCreateMsg(`已创建 ${r.id}${r.inviteCode ? ` · 邀请码 ${r.inviteCode}` : ''}`);
+      await load();
+    } catch (e) {
+      setError(e instanceof ApiError ? `创建失败：${e.code}` : '创建失败：网络错误');
+    }
   };
 
   if (!authed) {
@@ -99,14 +119,25 @@ export function AdminPage() {
               <button className="btn sm" onClick={() => void act(`/admin/agents/${a.id}/disconnect`)}>断开</button>
             </div>
           ))}
-          {tab === 'rooms' && (rows.rooms ?? []).map((r: any) => (
-            <div key={r.id} className="agent-row">
-              <span className="name">{r.title}（{r.id}）</span><span className="tag">{r.status}</span>
-              <button className="btn sm" onClick={() => void act(`/admin/rooms/${r.id}/pause`)}>暂停</button>
-              <button className="btn sm" onClick={() => void act(`/admin/rooms/${r.id}/resume`)}>恢复</button>
-              <button className="btn sm danger" onClick={() => void act(`/admin/rooms/${r.id}`, 'DELETE')}>删除</button>
-            </div>
-          ))}
+          {tab === 'rooms' && (
+            <>
+              <div className="form-row" style={{ marginBottom: 16 }}>
+                <input placeholder="新房间名" value={roomTitle} onChange={(e) => setRoomTitle(e.target.value)} aria-label="新房间名" style={{ maxWidth: 240 }} />
+                <button type="button" className={`btn sm ${roomVisibility === 'public' ? 'primary' : ''}`} onClick={() => setRoomVisibility('public')}>公开</button>
+                <button type="button" className={`btn sm ${roomVisibility === 'private' ? 'primary' : ''}`} onClick={() => setRoomVisibility('private')}>私有</button>
+                <button className="btn sm primary" onClick={() => void createRoomAdmin()}>创建房间</button>
+                {roomCreateMsg && <span className="muted">{roomCreateMsg}</span>}
+              </div>
+              {(rows.rooms ?? []).map((r: any) => (
+                <div key={r.id} className="agent-row">
+                  <span className="name">{r.title}（{r.id}）</span><span className="tag">{r.status}</span>
+                  <button className="btn sm" onClick={() => void act(`/admin/rooms/${r.id}/pause`)}>暂停</button>
+                  <button className="btn sm" onClick={() => void act(`/admin/rooms/${r.id}/resume`)}>恢复</button>
+                  {r.id !== 'lobby' && <button className="btn sm danger" onClick={() => void act(`/admin/rooms/${r.id}`, 'DELETE')}>删除</button>}
+                </div>
+              ))}
+            </>
+          )}
           {tab === 'messages' && (rows.messages ?? []).map((m: any) => (
             <div key={m.id} className="agent-row">
               <span className="name muted">[{m.seq}] {m.senderName}: {m.text.slice(0, 40)}{m.attachments?.length ? ` [附件×${m.attachments.length}]` : ''}</span>
