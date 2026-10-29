@@ -174,6 +174,18 @@ describe('@提及定向派发', () => {
     expect(w.storage.listMessages('lobby').at(-1)?.text).toContain('a@b.com');
   });
 
+  it('候补态 agent 被点名：不直派，给系统提示（与 canDispatch 同源判定，M3）', () => {
+    vi.setSystemTime(t0());
+    const w = makeWorld();
+    const a = addAgent(w, '小豆');
+    join(w, a.id);
+    const frames = recordDispatch(w);
+    w.storage.setAgentStatus(a.id, 'waiting', new Date().toISOString());
+    w.engine.humanPost('lobby', 'key_1', '阿伟', '@小豆 在吗');
+    expect(frames).toHaveLength(0);          // 候补不得绕过 canDispatch 直派
+    expect(sysMessages(w).some((t) => t.includes('不在线'))).toBe(true);
+  });
+
   it('中文无空格点名：你好@小豆 触发定向派发，邮箱仍不误伤', () => {
     vi.setSystemTime(t0());
     const w = makeWorld();

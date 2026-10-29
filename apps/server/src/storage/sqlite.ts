@@ -92,9 +92,13 @@ export class SqliteStorage implements Storage {
       this.db.exec('ALTER TABLE messages ADD COLUMN attachments TEXT');
     }
     // 2.3 发言节奏调优：lobby 旧默认冷却 10000 → 2000
-    const roomCols = (this.db.pragma('table_info(rooms)') as Array<{ name: string }>).map((c) => c.name);
-    if (roomCols.includes('cooldown_ms')) {
-      this.db.exec(`UPDATE rooms SET cooldown_ms = 2000 WHERE id = 'lobby' AND cooldown_ms = 10000`);
+    // 一次性（PRAGMA user_version 门闩）：否则管理员刻意把 lobby 改回 10000 会在每次重启被覆盖
+    if ((this.db.pragma('user_version', { simple: true }) as number) < 1) {
+      const roomCols = (this.db.pragma('table_info(rooms)') as Array<{ name: string }>).map((c) => c.name);
+      if (roomCols.includes('cooldown_ms')) {
+        this.db.exec(`UPDATE rooms SET cooldown_ms = 2000 WHERE id = 'lobby' AND cooldown_ms = 10000`);
+      }
+      this.db.pragma('user_version = 1');
     }
   }
 

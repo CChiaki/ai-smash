@@ -291,7 +291,7 @@ export class RoomEngine {
       this.systemNotice(roomId, `房间内没有叫 ${agent.name} 的 Agent`);
       return;
     }
-    if (agent.status === 'offline' || agent.status === 'error') {
+    if (!RoomEngine.isDispatchableStatus(agent.status)) {
       this.systemNotice(roomId, `${agent.name} 不在线`);
       return;
     }
@@ -503,7 +503,7 @@ export class RoomEngine {
     const room = this.deps.storage.getRoom(roomId);
     if (!room || room.status !== 'active') return false;
     const agent = this.deps.storage.getAgent(agentId);
-    if (!agent || agent.status === 'offline' || agent.status === 'error' || agent.status === 'waiting') return false;
+    if (!agent || !RoomEngine.isDispatchableStatus(agent.status)) return false;
     const ra = this.deps.storage.getRoomAgent(roomId, agentId);
     if (!ra || ra.status !== 'active') return false;
     const rt = this.runtimeOf(roomId, agentId);
@@ -549,6 +549,11 @@ export class RoomEngine {
 
   private key(roomId: string, agentId: string): string {
     return `${roomId}:${agentId}`;
+  }
+
+  /** 可派发的 agent 全局状态：offline/error/waiting 一律不派（canDispatch 与 dispatchMention 同源判定，勿单边漂移） */
+  private static isDispatchableStatus(status: AgentRow['status']): boolean {
+    return status !== 'offline' && status !== 'error' && status !== 'waiting';
   }
 
   private emitPresence(roomId: string): void {

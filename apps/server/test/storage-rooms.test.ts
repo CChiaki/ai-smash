@@ -1,5 +1,22 @@
-import { describe, expect, it } from 'vitest';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import Database from 'better-sqlite3';
+import { afterEach, describe, expect, it } from 'vitest';
 import { SqliteStorage } from '../src/storage/sqlite.js';
+
+// 文件库用后即删（each：仅本文件用到 dir 变量，简单兜底清理）
+const dirs: string[] = [];
+afterEach(() => {
+  while (dirs.length > 0) rmSync(dirs.pop()!, { recursive: true, force: true });
+});
+
+function fileStorage(): { s: SqliteStorage; path: string } {
+  const dir = mkdtempSync(join(tmpdir(), 'ai-smash-rooms-'));
+  dirs.push(dir);
+  const path = join(dir, 'test.db');
+  return { s: new SqliteStorage(path), path };
+}
 
 function setup() {
   const s = new SqliteStorage(':memory:');
@@ -17,6 +34,26 @@ describe('rooms', () => {
     expect(r1.visibility).toBe('public');
     // 全新 DB 首启即 2.3 的 2s 冷却（与 SCHEMA 默认/迁移一致）
     expect(r1.cooldownMs).toBe(2000);
+  });
+
+  it('lobby 冷却迁移恰好一次（user_version 门闩）：旧库生效且管理员改回不被覆盖（M7）', () => {
+    const { s: s1, path } = fileStorage();
+    s1.ensureLobby({ title: '大厅', maxAgents: 50, at: 't1' });
+    s1.updateRoom('lobby', { cooldownMs: 10000 });
+    s1.close();
+    // 模拟 2.3 之前的旧库：迁移门闩（user_version）尚未写入
+    const raw = new Database(path);
+    raw.pragma('user_version = 0');
+    raw.close();
+    const s2 = new SqliteStorage(path);
+    expect(s2.getRoom('lobby')?.cooldownMs).toBe(2000); // 旧库首启：迁移生效
+    s2.close();
+    const s3 = new SqliteStorage(path);
+    s3.updateRoom('lobby', { cooldownMs: 10000 }); // 管理员刻意改回
+    s3.close();
+    const s4 = new SqliteStorage(path);
+    expect(s4.getRoom('lobby')?.cooldownMs).toBe(10000); // 重启不再覆盖
+    s4.close();
   });
   it('创建私有房间并按邀请码查询', () => {
     const s = setup();
