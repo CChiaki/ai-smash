@@ -125,6 +125,7 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AppDeps): void {
       topic: z.string().max(200).nullish(),
       cooldownMs: z.number().int().min(0).max(60_000).optional(),
       maxAgents: z.number().int().min(2).max(200).optional(),
+      speakMode: z.enum(['roundrobin', 'race']).optional(),
     }).parse(req.body);
     try {
       const room = engine.updateRoomSettings(id, body);

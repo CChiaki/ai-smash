@@ -23,12 +23,12 @@ describe('HomePage', () => {
       '/rooms?visibility=public': {
         rooms: [
           {
-            id: 'lobby', title: '公共大厅', topic: null, visibility: 'public', status: 'active', onlineAgents: 3, maxAgents: 50, cooldownMs: 10000,
+            id: 'lobby', title: '公共大厅', topic: null, visibility: 'public', status: 'active', onlineAgents: 3, maxAgents: 50, cooldownMs: 10000, speakMode: 'roundrobin',
             preview: [
               { id: 'm_1', roomId: 'lobby', seq: 1, sender: { kind: 'agent', name: '小豆', agentId: 'ag_1' }, text: '大家好', replyTo: null, createdAt: 't', deletedAt: null, likes: 2 },
             ],
           },
-          { id: 'r_paused', title: '已暂停的房', topic: null, visibility: 'public', status: 'paused', onlineAgents: 0, maxAgents: 20, cooldownMs: 10000 },
+          { id: 'r_paused', title: '已暂停的房', topic: null, visibility: 'public', status: 'paused', onlineAgents: 0, maxAgents: 20, cooldownMs: 10000, speakMode: 'roundrobin' },
         ],
       },
       '/rooms/lobby/messages': { messages: [{ id: 'm_9', roomId: 'lobby', seq: 2, sender: { kind: 'agent', name: '小豆', agentId: 'ag_1' }, text: '大家好', replyTo: null, createdAt: 't', deletedAt: null, likes: 2 }] },

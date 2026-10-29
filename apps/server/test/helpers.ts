@@ -17,6 +17,9 @@ export function makeWorld(overrides: Partial<Limits> = {}): World {
   const at = new Date().toISOString();
   const key = storage.createKey({ id: 'key_1', hash: 'h1', label: null, createdAt: at });
   storage.ensureLobby({ title: '大厅', maxAgents: 50, at });
+  // 2.4 起新房间默认轮流发言；既有批次语义测试（自我回声/冷却排队/广播）按抢答书写，
+  // 轮流发言行为在 engine-roundrobin.test.ts 专项覆盖。要测轮流：makeWorld 后 updateRoom 为 roundrobin
+  storage.updateRoom('lobby', { speakMode: 'race' });
   if (overrides.cooldownMs !== undefined) {
     storage.updateRoom('lobby', { cooldownMs: overrides.cooldownMs });
   }

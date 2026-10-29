@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS rooms (
   visibility TEXT NOT NULL DEFAULT 'private', owner_key_id TEXT,
   status TEXT NOT NULL DEFAULT 'active', invite_code TEXT UNIQUE,
   cooldown_ms INTEGER NOT NULL DEFAULT 2000, max_agents INTEGER NOT NULL DEFAULT 20,
+  speak_mode TEXT NOT NULL DEFAULT 'roundrobin',
   created_at TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS room_agents (
@@ -90,6 +91,11 @@ export class SqliteStorage implements Storage {
     const msgCols = (this.db.pragma('table_info(messages)') as Array<{ name: string }>).map((c) => c.name);
     if (!msgCols.includes('attachments')) {
       this.db.exec('ALTER TABLE messages ADD COLUMN attachments TEXT');
+    }
+    // 2.4 发言模式：旧库 rooms 缺 speak_mode 列则补上（默认轮流发言）
+    const roomColsAll = (this.db.pragma('table_info(rooms)') as Array<{ name: string }>).map((c) => c.name);
+    if (!roomColsAll.includes('speak_mode')) {
+      this.db.exec(`ALTER TABLE rooms ADD COLUMN speak_mode TEXT NOT NULL DEFAULT 'roundrobin'`);
     }
     // 2.3 发言节奏调优：lobby 旧默认冷却 10000 → 2000
     // 一次性（PRAGMA user_version 门闩）：否则管理员刻意把 lobby 改回 10000 会在每次重启被覆盖
@@ -210,7 +216,9 @@ export class SqliteStorage implements Storage {
     return {
       id: r.id, title: r.title, topic: r.topic, visibility: r.visibility,
       ownerKeyId: r.owner_key_id, status: r.status, inviteCode: r.invite_code,
-      cooldownMs: r.cooldown_ms, maxAgents: r.max_agents, createdAt: r.created_at,
+      cooldownMs: r.cooldown_ms, maxAgents: r.max_agents,
+      speakMode: (r.speak_mode === 'race' ? 'race' : 'roundrobin'),
+      createdAt: r.created_at,
     };
   }
 
@@ -235,7 +243,8 @@ export class SqliteStorage implements Storage {
     return {
       id: input.id, title: input.title, topic: input.topic, visibility: input.visibility,
       ownerKeyId: input.ownerKeyId, status: 'active', inviteCode: input.inviteCode,
-      cooldownMs: input.cooldownMs, maxAgents: input.maxAgents, createdAt: input.at,
+      cooldownMs: input.cooldownMs, maxAgents: input.maxAgents,
+      speakMode: 'roundrobin', createdAt: input.at,
     };
   }
 
@@ -275,11 +284,11 @@ export class SqliteStorage implements Storage {
 
   updateRoom(
     id: string,
-    patch: Partial<Pick<RoomRow, 'title' | 'topic' | 'status' | 'cooldownMs' | 'maxAgents'>>,
+    patch: Partial<Pick<RoomRow, 'title' | 'topic' | 'status' | 'cooldownMs' | 'maxAgents' | 'speakMode'>>,
   ): RoomRow {
     const col: Record<string, string> = {
       title: 'title', topic: 'topic', status: 'status',
-      cooldownMs: 'cooldown_ms', maxAgents: 'max_agents',
+      cooldownMs: 'cooldown_ms', maxAgents: 'max_agents', speakMode: 'speak_mode',
     };
     for (const [k, v] of Object.entries(patch)) {
       this.db.prepare(`UPDATE rooms SET ${col[k]} = ? WHERE id = ?`).run(v, id);

@@ -20,6 +20,7 @@ export class RoomEngine {
   private runtime = new Map<string, AgentRoomRuntime>();  // `${roomId}:${agentId}` -> 运行时状态
   private roomPosts = new Map<string, number[]>();        // roomId -> 最近 agent 发言时间
   private humanPosts = new Map<string, number[]>();       // `${roomId}:${keyId}` -> 最近人类发言时间
+  private roomCursor = new Map<string, string>();         // roomId -> 轮换锚点（最近被派发的 agentId，轮流发言用）
 
   constructor(private deps: EngineDeps) {
     this.limits = { ...DEFAULT_LIMITS, ...deps.limits };
@@ -94,7 +95,7 @@ export class RoomEngine {
   // 规格 8.4：上限调高触发候补转正；archived 是终态，拒绝任何设置变更
   updateRoomSettings(
     roomId: string,
-    patch: Partial<Pick<RoomRow, 'title' | 'topic' | 'status' | 'cooldownMs' | 'maxAgents'>>,
+    patch: Partial<Pick<RoomRow, 'title' | 'topic' | 'status' | 'cooldownMs' | 'maxAgents' | 'speakMode'>>,
   ): RoomRow {
     const room = this.deps.storage.getRoom(roomId);
     if (!room) throw new EngineError('not_found');
@@ -163,8 +164,9 @@ export class RoomEngine {
   agentSkip(agentId: string, eventId: string, _reason?: string): { status: 'skipped' } {
     const found = this.findInflight(agentId, eventId);
     if (!found) return { status: 'skipped' }; // 未知 eventId 视为已失效，静默忽略
+    const trigger = { messageId: found.inflight.triggerMessageId, speakMode: this.deps.storage.getRoom(found.roomId)?.speakMode ?? 'race' } as const;
     this.finishEvent(found.roomId, agentId, eventId, 'skipped', null, null);
-    this.afterEvent(found.roomId, agentId, false);
+    this.afterEvent(found.roomId, agentId, false, trigger);
     return { status: 'skipped' };
   }
 
@@ -204,7 +206,7 @@ export class RoomEngine {
     const latencyMs = Date.now() - inflight.notifiedAt;
     const reject = (reason: 'invalid' | 'throttled' | 'paused') => {
       this.finishEvent(roomId, agentId, eventId, 'rejected', reason, latencyMs);
-      this.afterEvent(roomId, agentId, false);
+      this.afterEvent(roomId, agentId, false, { messageId: inflight.triggerMessageId, speakMode: room.speakMode });
       return { status: 'rejected' as const, reason };
     };
     if (room.status !== 'active') return reject('paused');
@@ -230,6 +232,11 @@ export class RoomEngine {
   dispatchForNewMessage(roomId: string, message: ChatMessage): void {
     const room = this.deps.storage.getRoom(roomId);
     if (!room || room.status !== 'active') return;
+    if (room.speakMode === 'roundrobin') {
+      this.dispatchRoundRobin(roomId, message.id);
+      return;
+    }
+    // race（抢答）：广播全场，先到先得
     // 规格 8.2(2)：同一触发消息的上下文序列化一次后复用
     const context = this.buildContext(roomId);
     for (const ra of this.deps.storage.listRoomAgents(roomId)) {
@@ -338,6 +345,7 @@ export class RoomEngine {
     this.runtimeOf(roomId, agentId).mentionActive = Boolean(opts?.mentioned); // 2.2：@ 徽章随派发置位
     this.clearCooldownTimer(roomId, agentId); // 冷却排队定时器作废：真实派发已建立
     this.inflight.set(this.key(roomId, agentId), inflight);
+    this.roomCursor.set(roomId, agentId); // 轮换锚点跟随真实派发（@ 点名插队后轮换从其后续起）
     this.deps.bus.emit(Topics.eventDispatch, {
       eventId,
       agentId,
@@ -455,22 +463,72 @@ export class RoomEngine {
     }
   }
 
-  private afterEvent(roomId: string, agentId: string, spoke: boolean): void {
+  private afterEvent(
+    roomId: string, agentId: string, spoke: boolean,
+    trigger?: { messageId: string | null; speakMode: 'roundrobin' | 'race' },
+  ): void {
     const rt = this.runtimeOf(roomId, agentId);
     const pending = rt.pendingMessageId;
     const bypass = rt.mentionBypass;
     rt.pendingMessageId = null;
     rt.mentionBypass = false;
     const blocked = spoke && rt.cooldownUntil > Date.now() && !bypass;
-    if (pending && !blocked && this.canDispatch(roomId, agentId, { mention: bypass })) {
-      this.dispatchToAgent(roomId, agentId, pending, this.buildContext(roomId), bypass ? { mentioned: true } : undefined);
+    if (pending && !blocked) {
+      if (this.canDispatch(roomId, agentId, { mention: bypass })) {
+        this.dispatchToAgent(roomId, agentId, pending, this.buildContext(roomId), bypass ? { mentioned: true } : undefined);
+      } else if (trigger && trigger.speakMode === 'roundrobin' && trigger.messageId) {
+        // 轮流发言：轮到的 agent 接不住排队追问 → 顺延下一位（锚点移过哑火者）
+        this.roomCursor.set(roomId, agentId);
+        this.dispatchRoundRobin(roomId, trigger.messageId, { silentAgentId: agentId });
+      }
     } else if (pending && blocked) {
       // 追问不丢：发言落入冷却时不再作废 pending，按剩余冷却重新排队补派
       // （覆盖 @提及作废排队定时器、在途期间到达的追问两种丢失路径）
       rt.pendingMessageId = pending;
       this.armCooldownDispatch(roomId, agentId);
+    } else if (!spoke && trigger && trigger.speakMode === 'roundrobin' && trigger.messageId) {
+      // 轮流发言：轮到的 agent 没出声（skip/超时/被拒）→ 顺延下一位，同一触发消息继续
+      // 锚点先移过哑火者：否则「after 锚点」仍会先撞上其他哑火者之外的路径死循环
+      this.roomCursor.set(roomId, agentId);
+      this.dispatchRoundRobin(roomId, trigger.messageId, { silentAgentId: agentId });
     }
     this.emitPresence(roomId);
+  }
+
+  /**
+   * 轮流发言（2.4）：新消息只派给「轮到的下一个」active 成员。
+   * 顺序锚点 = 最近被派发的 agent（roomCursor），跨发言与静默期持久；被 @ 点名会移动锚点（插队）。
+   * 轮到者在冷却 → 轮次保留排队补派（不跳人）；在途/离线/速率超 → 顺延下一个。
+   * 换人即清零连续计数（轮流的结构公平性已替代连续上限的防自嗨职责）；
+   * 连续上限仅在「同一 agent 被连续轮到」（如他人全 skip / 单人房）时照常拦截。
+   */
+  private dispatchRoundRobin(roomId: string, triggerMessageId: string, opts: { silentAgentId?: string } = {}): void {
+    const room = this.deps.storage.getRoom(roomId);
+    if (!room || room.status !== 'active') return;
+    const triggerRow = this.deps.storage.getMessage(triggerMessageId);
+    if (!triggerRow) return;
+    const members = this.deps.storage.listRoomAgents(roomId).filter((ra) => ra.status === 'active');
+    if (members.length === 0) return;
+    const cursorId = this.roomCursor.get(roomId);
+    const cursorIdx = cursorId ? members.findIndex((ra) => ra.agentId === cursorId) : -1;
+    const start = cursorIdx >= 0 ? cursorIdx + 1 : 0;
+    for (let i = 0; i < members.length; i++) {
+      const ra = members[(start + i) % members.length];
+      if (triggerRow.agentId && triggerRow.agentId === ra.agentId) continue; // 自我回声硬禁
+      if (opts.silentAgentId && opts.silentAgentId === ra.agentId) continue; // skip 顺延：跳过哑火的
+      if (this.inflight.has(this.key(roomId, ra.agentId))) continue;         // 上一轮还在途 → 顺延
+      const rt = this.runtimeOf(roomId, ra.agentId);
+      if (cursorId && ra.agentId !== cursorId) rt.consecutive = 0;           // 换人即清零
+      if (rt.cooldownUntil > Date.now()) {
+        // 轮到 TA 但在冷却：轮次保留，排队到期补派（多条只留最新）
+        rt.pendingMessageId = triggerMessageId;
+        this.armCooldownDispatch(roomId, ra.agentId);
+        return;
+      }
+      if (!this.canDispatch(roomId, ra.agentId)) continue;                   // 离线/候补/速率超 → 顺延
+      this.dispatchToAgent(roomId, ra.agentId, triggerMessageId, this.buildContext(roomId));
+      return;
+    }
   }
 
   /** 冷却排队：按剩余冷却武装补派定时器（多条只留最新；到期经 canDispatch 常规校验后补派） */
@@ -532,8 +590,9 @@ export class RoomEngine {
   private onDeadline(roomId: string, agentId: string, eventId: string): void {
     const inflight = this.inflight.get(this.key(roomId, agentId));
     if (!inflight || inflight.eventId !== eventId) return;
+    const trigger = { messageId: inflight.triggerMessageId, speakMode: this.deps.storage.getRoom(roomId)?.speakMode ?? 'race' } as const;
     this.finishEvent(roomId, agentId, eventId, 'timeout', null, null);
-    this.afterEvent(roomId, agentId, false);
+    this.afterEvent(roomId, agentId, false, trigger);
   }
 
   // ---------- 速率 ----------

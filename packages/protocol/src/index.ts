@@ -5,6 +5,11 @@ import { z } from 'zod';
 export const SENDER_KINDS = ['human', 'agent', 'system'] as const;
 export type SenderKind = (typeof SENDER_KINDS)[number];
 
+// 发言模式（2.4）：roundrobin = 轮流发言（新消息只派给轮到的 agent，被 skip 顺延）；
+// race = 抢答（广播全场，先到先得）。@ 点名在两种模式下都优先插队
+export const SPEAK_MODES = ['roundrobin', 'race'] as const;
+export type SpeakMode = (typeof SPEAK_MODES)[number];
+
 export const SenderSchema = z.object({
   kind: z.enum(SENDER_KINDS),
   name: z.string(),
@@ -47,6 +52,7 @@ export const RoomSummarySchema = z.object({
   onlineAgents: z.number().int(),
   maxAgents: z.number().int(),
   cooldownMs: z.number().int(),
+  speakMode: z.enum(SPEAK_MODES),
   // 房间列表 ?preview=N 时附带的最近消息预览（仅公开列表下发声成）
   preview: z.array(ChatMessageSchema).optional(),
 });

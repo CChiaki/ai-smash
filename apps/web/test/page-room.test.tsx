@@ -53,7 +53,7 @@ class RoomFakeWS {
 
 const ownerReadyFrame = {
   type: 'ready',
-  room: { id: 'r1', title: '测试房', topic: null, visibility: 'public', status: 'active', onlineAgents: 1, maxAgents: 20, cooldownMs: 10000 },
+  room: { id: 'r1', title: '测试房', topic: null, visibility: 'public', status: 'active', onlineAgents: 1, maxAgents: 20, cooldownMs: 10000, speakMode: 'roundrobin' },
   messages: [],
   agents: [],
   you: { keyId: 'k1', name: '房主', isOwner: true },
@@ -63,7 +63,7 @@ describe('RoomPage', () => {
   function stubRest() {
     return vi.fn(async (url: string, init?: any) => {
       if (url === '/api/rooms/r1') {
-        return new Response(JSON.stringify({ id: 'r1', title: '测试房', topic: null, visibility: 'public', status: 'active', onlineAgents: 1, maxAgents: 20, cooldownMs: 10000 }), { status: 200, headers: { 'content-type': 'application/json' } });
+        return new Response(JSON.stringify({ id: 'r1', title: '测试房', topic: null, visibility: 'public', status: 'active', onlineAgents: 1, maxAgents: 20, cooldownMs: 10000, speakMode: 'roundrobin' }), { status: 200, headers: { 'content-type': 'application/json' } });
       }
       if (url.startsWith('/api/rooms/r1/messages')) {
         return new Response(JSON.stringify({ messages: [humanMsg, agentMsg] }), { status: 200, headers: { 'content-type': 'application/json' } });
@@ -88,7 +88,7 @@ describe('RoomPage', () => {
   it('回放模式（?at=2）：seq 大于 at 的消息不渲染', async () => {
     vi.stubGlobal('fetch', vi.fn(async (url: string) => {
       if (url === '/api/rooms/r1') {
-        return new Response(JSON.stringify({ id: 'r1', title: '测试房', topic: null, visibility: 'public', status: 'active', onlineAgents: 1, maxAgents: 20, cooldownMs: 10000 }), { status: 200, headers: { 'content-type': 'application/json' } });
+        return new Response(JSON.stringify({ id: 'r1', title: '测试房', topic: null, visibility: 'public', status: 'active', onlineAgents: 1, maxAgents: 20, cooldownMs: 10000, speakMode: 'roundrobin' }), { status: 200, headers: { 'content-type': 'application/json' } });
       }
       if (url.startsWith('/api/rooms/r1/messages')) {
         return new Response(JSON.stringify({ messages: [humanMsg, agentMsg, laterMsg] }), { status: 200, headers: { 'content-type': 'application/json' } });
@@ -130,7 +130,7 @@ describe('RoomPage', () => {
       ws.open();
       ws.receive({
         type: 'ready',
-        room: { id: 'r1', title: '测试房', topic: null, visibility: 'public', status: 'active', onlineAgents: 1, maxAgents: 20, cooldownMs: 10000 },
+        room: { id: 'r1', title: '测试房', topic: null, visibility: 'public', status: 'active', onlineAgents: 1, maxAgents: 20, cooldownMs: 10000, speakMode: 'roundrobin' },
         messages: [],
         agents: [],
         you: { keyId: 'k1', name: '房主', isOwner: true },
@@ -158,7 +158,7 @@ describe('RoomPage', () => {
     vi.stubGlobal('fetch', vi.fn(async (url: string, init?: any) => {
       if (url === '/api/rooms/r1') {
         if (init?.method === 'PATCH') {
-          return new Response(JSON.stringify({ id: 'r1', cooldownMs: 1500, maxAgents: 30 }), { status: 200, headers: { 'content-type': 'application/json' } });
+          return new Response(JSON.stringify({ id: 'r1', cooldownMs: 1500, speakMode: 'roundrobin', maxAgents: 30 }), { status: 200, headers: { 'content-type': 'application/json' } });
         }
         return new Response(JSON.stringify({ id: 'r1', title: '测试房', topic: null, visibility: 'private', status: 'active', onlineAgents: 1, maxAgents: 20, inviteCode: 'INV-9' }), { status: 200, headers: { 'content-type': 'application/json' } });
       }
@@ -178,7 +178,7 @@ describe('RoomPage', () => {
       ws.open();
       ws.receive({
         type: 'ready',
-        room: { id: 'r1', title: '测试房', topic: null, visibility: 'private', status: 'active', onlineAgents: 1, maxAgents: 20, cooldownMs: 10000 },
+        room: { id: 'r1', title: '测试房', topic: null, visibility: 'private', status: 'active', onlineAgents: 1, maxAgents: 20, cooldownMs: 10000, speakMode: 'roundrobin' },
         messages: [],
         agents: [],
         you: { keyId: 'k1', name: '房主', isOwner: true },
@@ -196,7 +196,7 @@ describe('RoomPage', () => {
     await waitFor(() => {
       const patch = vi.mocked(fetch).mock.calls.find((c) => c[0] === '/api/rooms/r1' && (c[1] as any)?.method === 'PATCH');
       expect(patch).toBeTruthy();
-      expect(JSON.parse((patch![1] as any).body)).toEqual({ cooldownMs: 1500, maxAgents: 30 });
+      expect(JSON.parse((patch![1] as any).body)).toEqual({ cooldownMs: 1500, maxAgents: 30 }); // speakMode 未改动不发送
     });
     await screen.findByText('已保存');
   });

@@ -17,6 +17,7 @@ export interface RoomRow {
   visibility: 'public' | 'private'; ownerKeyId: string | null;
   status: 'active' | 'paused' | 'archived';
   inviteCode: string | null; cooldownMs: number; maxAgents: number;
+  speakMode: 'roundrobin' | 'race';
   createdAt: string;
 }
 
@@ -105,7 +106,7 @@ export interface Storage {
   getRoom(id: string): RoomRow | undefined;
   getRoomByInviteCode(code: string): RoomRow | undefined;
   listRooms(visibility?: 'public' | 'private'): RoomRow[];
-  updateRoom(id: string, patch: Partial<Pick<RoomRow, 'title' | 'topic' | 'status' | 'cooldownMs' | 'maxAgents'>>): RoomRow;
+  updateRoom(id: string, patch: Partial<Pick<RoomRow, 'title' | 'topic' | 'status' | 'cooldownMs' | 'maxAgents' | 'speakMode'>>): RoomRow;
   // room_agents
   addRoomAgent(roomId: string, agentId: string, status: 'active' | 'waiting', at: string): void;
   getRoomAgent(roomId: string, agentId: string): RoomAgentRow | undefined;

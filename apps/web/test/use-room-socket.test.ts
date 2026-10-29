@@ -26,7 +26,7 @@ afterEach(() => {
 
 const readyFrame = {
   type: 'ready',
-  room: { id: 'lobby', title: '大厅', topic: null, visibility: 'public', status: 'active', onlineAgents: 0, maxAgents: 50, cooldownMs: 10000 },
+  room: { id: 'lobby', title: '大厅', topic: null, visibility: 'public', status: 'active', onlineAgents: 0, maxAgents: 50, cooldownMs: 10000, speakMode: 'roundrobin' },
   messages: [],
   agents: [],
   you: { keyId: 'k_1', name: '阿伟', isOwner: true },

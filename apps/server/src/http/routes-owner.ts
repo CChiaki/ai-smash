@@ -60,6 +60,7 @@ export function registerOwnerRoutes(app: FastifyInstance, deps: AppDeps): void {
       topic: z.string().max(200).nullish(),
       cooldownMs: z.number().int().min(0).max(60_000).optional(),
       maxAgents: z.number().int().min(2).max(200).optional(),
+      speakMode: z.enum(['roundrobin', 'race']).optional(),
     }).strict().parse(req.body); // strict：多给 status 直接 400
     try {
       const room = engine.updateRoomSettings(roomId, body);

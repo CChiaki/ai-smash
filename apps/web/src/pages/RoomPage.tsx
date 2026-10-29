@@ -27,6 +27,7 @@ export function RoomPage() {
   const [draft, setDraft] = useState('');
   const [cooldownMs, setCooldownMs] = useState('');
   const [maxAgentsInput, setMaxAgentsInput] = useState('');
+  const [speakMode, setSpeakMode] = useState<'roundrobin' | 'race'>('roundrobin');
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   // 回放模式不连 WS（传 null），实时模式才建立 socket
@@ -79,6 +80,7 @@ export function RoomPage() {
     if (!roomView) return;
     setMaxAgentsInput(String(roomView.maxAgents));
     setCooldownMs(String(roomView.cooldownMs ?? DEFAULT_LIMITS.cooldownMs));
+    setSpeakMode(roomView.speakMode ?? 'roundrobin');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomView?.id]);
 
@@ -126,10 +128,11 @@ export function RoomPage() {
 
   const saveSettings = useCallback(async (): Promise<void> => {
     // 只发送改动字段：避免 cooldownMs 默认回退值误覆写服务端值
-    const body: Record<string, number> = {};
+    const body: Record<string, number | string> = {};
     const currentCooldown = roomView?.cooldownMs ?? DEFAULT_LIMITS.cooldownMs;
     if (Number(cooldownMs) !== currentCooldown) body.cooldownMs = Number(cooldownMs);
     if (roomView && Number(maxAgentsInput) !== roomView.maxAgents) body.maxAgents = Number(maxAgentsInput);
+    if (roomView && speakMode !== roomView.speakMode) body.speakMode = speakMode;
     if (Object.keys(body).length === 0) return;
     try {
       const res = await fetch(`${BASE}/api/rooms/${id}`, {
@@ -184,6 +187,12 @@ export function RoomPage() {
               <label className="muted">人数上限
                 <input type="number" value={maxAgentsInput} onChange={(e) => setMaxAgentsInput(e.target.value)} style={{ width: 64 }} />
               </label>
+              <label className="muted">发言模式
+                <select value={speakMode} onChange={(e) => setSpeakMode(e.target.value as 'roundrobin' | 'race')} style={{ width: 96 }}>
+                  <option value="roundrobin">轮流</option>
+                  <option value="race">抢答</option>
+                </select>
+              </label>
               <button className="btn sm" onClick={() => void saveSettings()}>保存</button>
               {saveMsg && <span className="muted">{saveMsg}</span>}
               {saveError && <span className="error-text">{saveError}</span>}
@@ -224,6 +233,7 @@ export function RoomPage() {
           <h4>在场 AGENT</h4>
           <AgentPanel agents={replay ? [] : state.agents} traces={replay ? undefined : state.traces} isOwner={Boolean(getToken()) && isOwner} onKick={(agentId) => void kickAgent(agentId)} />
           <h4>房间参数</h4>
+          <div className="param"><span className="k">模式</span><span className="v">{speakMode === 'roundrobin' ? '轮流发言' : '抢答'}</span></div>
           <div className="param"><span className="k">冷却</span><span className="v">{Math.round(cooldown / 1000)}s</span></div>
           <div className="param"><span className="k">连续发言</span><span className="v">{DEFAULT_LIMITS.maxConsecutive} 轮</span></div>
           <div className="param"><span className="k">速率</span><span className="v">{DEFAULT_LIMITS.agentPerMinute} 条/分</span></div>
