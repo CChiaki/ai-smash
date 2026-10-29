@@ -121,102 +121,113 @@ export class AgentGateway {
     // maxPayload 超限等协议错误会以 'error' 事件到达；无监听会变成 uncaughtException
     ws.on('error', () => {});
     ws.on('message', (data) => {
-      let frame: any;
       try {
-        frame = AgentClientSchema.parse(JSON.parse(String(data)));
-      } catch {
-        return; // 非法帧静默丢弃
-      }
-      if (!agentId) {
-        if (frame.type !== 'hello') return this.close(ws, 4001, 'hello_first');
-        const key = this.deps.storage.getKeyByHash(sha256(frame.key));
-        if (!key || key.status === 'banned') return this.close(ws, 4001, 'invalid_key');
-        if (frame.agentId) {
-          const existing = this.deps.storage.getAgent(frame.agentId);
-          if (existing && existing.keyId !== key.id) return this.close(ws, 4001, 'invalid_agent');
-        }
-        let agent;
+        let frame: any;
         try {
-          agent = this.deps.storage.upsertAgent({
-            ...(frame.agentId ? { id: frame.agentId } : {}),
-            keyId: key.id, name: frame.agent.name, at: now(),
-          });
+          frame = AgentClientSchema.parse(JSON.parse(String(data)));
         } catch {
-          return this.close(ws, 4001, 'invalid_agent');
+          return; // 非法帧静默丢弃
         }
-        if (this.deps.storage.countAgentsByKey(key.id) > DEFAULT_LIMITS.keyAgentsGlobal) {
-          return this.close(ws, 4002, 'agent_limit');
-        }
-        const old = this.sockets.get(agent.id);
-        if (old) this.close(old, 4000, 'replaced');
-        agentId = agent.id;
-        clearTimeout(authTimer);
-        this.sockets.set(agent.id, ws);
-        this.deps.storage.setAgentStatus(agent.id, 'online', now());
-        this.deps.storage.touchKey(key.id, now());
-        const rooms: string[] = [];
-        const lobby = this.deps.storage.getRoom('lobby');
-        if (lobby && lobby.status === 'active') {
-          const joined = this.deps.engine.joinRoom(agent.id, 'lobby');
-          rooms.push('lobby');
-          this.send(ws, { type: 'joined', roomId: 'lobby', status: joined.status });
-        }
-        this.send(ws, {
-          type: 'ready',
-          agentId: agent.id,
-          rooms,
-          limits: { deadlineMs: DEFAULT_LIMITS.deadlineMs, contextBytes: DEFAULT_LIMITS.contextBytes },
-        });
-        return;
-      }
-      const id = agentId;
-      switch (frame.type) {
-        case 'join': {
+        if (!agentId) {
+          if (frame.type !== 'hello') return this.close(ws, 4001, 'hello_first');
+          const key = this.deps.storage.getKeyByHash(sha256(frame.key));
+          if (!key || key.status === 'banned') return this.close(ws, 4001, 'invalid_key');
+          if (frame.agentId) {
+            const existing = this.deps.storage.getAgent(frame.agentId);
+            if (existing && existing.keyId !== key.id) return this.close(ws, 4001, 'invalid_agent');
+          }
+          let agent;
           try {
-            const r = this.deps.engine.joinRoom(id, frame.roomId);
-            this.send(ws, { type: 'joined', roomId: frame.roomId, status: r.status });
-          } catch (e: any) {
-            this.send(ws, { type: 'error', code: e.code ?? 'join_failed', message: String(e.message) });
+            agent = this.deps.storage.upsertAgent({
+              ...(frame.agentId ? { id: frame.agentId } : {}),
+              keyId: key.id, name: frame.agent.name, at: now(),
+            });
+          } catch {
+            return this.close(ws, 4001, 'invalid_agent');
           }
-          return;
-        }
-        case 'leave': {
-          this.deps.engine.leaveRoom(id, frame.roomId);
-          return;
-        }
-        case 'typing': {
-          return; // 预留：无行为
-        }
-        case 'post': {
-          let replyTo = frame.replyTo;
-          if (replyTo) {
-            const target = this.deps.storage.getMessage(replyTo);
-            const roomOfAgent = [...this.deps.storage.listRoomsOfAgent(id)].find((ra) => ra.status === 'active');
-            if (!target || (roomOfAgent && target.roomId !== roomOfAgent.roomId)) replyTo = undefined;
+          if (this.deps.storage.countAgentsByKey(key.id) > DEFAULT_LIMITS.keyAgentsGlobal) {
+            return this.close(ws, 4002, 'agent_limit');
           }
-          const r = this.deps.engine.agentPost(id, frame.eventId, frame.text, replyTo, frame.attachments);
-          this.send(ws, { type: 'ack', eventId: frame.eventId, status: r.status, ...(r.status === 'rejected' ? { reason: (r as any).reason } : {}) });
+          const old = this.sockets.get(agent.id);
+          if (old) this.close(old, 4000, 'replaced');
+          agentId = agent.id;
+          clearTimeout(authTimer);
+          this.sockets.set(agent.id, ws);
+          this.deps.storage.setAgentStatus(agent.id, 'online', now());
+          this.deps.storage.touchKey(key.id, now());
+          const rooms: string[] = [];
+          const lobby = this.deps.storage.getRoom('lobby');
+          if (lobby && lobby.status === 'active') {
+            try {
+              const joined = this.deps.engine.joinRoom(agent.id, 'lobby');
+              rooms.push('lobby');
+              this.send(ws, { type: 'joined', roomId: 'lobby', status: joined.status });
+            } catch (e: any) {
+              // 引擎语义错误（kicked/forbidden/archived/not_found）不能击穿进程，关闭该连接即可
+              return this.close(ws, 4003, e?.code ?? 'join_failed');
+            }
+          }
+          this.send(ws, {
+            type: 'ready',
+            agentId: agent.id,
+            rooms,
+            limits: { deadlineMs: DEFAULT_LIMITS.deadlineMs, contextBytes: DEFAULT_LIMITS.contextBytes },
+          });
           return;
         }
-        case 'skip': {
-          this.deps.engine.agentSkip(id, frame.eventId, frame.reason);
-          this.send(ws, { type: 'ack', eventId: frame.eventId, status: 'skipped' });
-          return;
+        const id = agentId;
+        switch (frame.type) {
+          case 'join': {
+            try {
+              const r = this.deps.engine.joinRoom(id, frame.roomId);
+              this.send(ws, { type: 'joined', roomId: frame.roomId, status: r.status });
+            } catch (e: any) {
+              this.send(ws, { type: 'error', code: e.code ?? 'join_failed', message: String(e.message) });
+            }
+            return;
+          }
+          case 'leave': {
+            this.deps.engine.leaveRoom(id, frame.roomId);
+            return;
+          }
+          case 'typing': {
+            return; // 预留：无行为
+          }
+          case 'post': {
+            let replyTo = frame.replyTo;
+            if (replyTo) {
+              const target = this.deps.storage.getMessage(replyTo);
+              const roomOfAgent = [...this.deps.storage.listRoomsOfAgent(id)].find((ra) => ra.status === 'active');
+              if (!target || (roomOfAgent && target.roomId !== roomOfAgent.roomId)) replyTo = undefined;
+            }
+            const r = this.deps.engine.agentPost(id, frame.eventId, frame.text, replyTo, frame.attachments);
+            this.send(ws, { type: 'ack', eventId: frame.eventId, status: r.status, ...(r.status === 'rejected' ? { reason: (r as any).reason } : {}) });
+            return;
+          }
+          case 'skip': {
+            this.deps.engine.agentSkip(id, frame.eventId, frame.reason);
+            this.send(ws, { type: 'ack', eventId: frame.eventId, status: 'skipped' });
+            return;
+          }
+          case 'post_delta': {
+            // 校验（在途/累计上限）在引擎内；stale 静默丢弃，经 Bus 由人类网关广播
+            this.deps.engine.agentDelta(id, frame.eventId, frame.delta);
+            return;
+          }
+          case 'trace': {
+            // 校验（在途/单 event 上限）在引擎内；stale 静默丢弃，经 Bus 由人类网关广播
+            this.deps.engine.agentTrace(id, frame.eventId, frame.kind, frame.text);
+            return;
+          }
+          case 'ping': {
+            this.send(ws, { type: 'pong', t: frame.t });
+            return;
+          }
         }
-        case 'post_delta': {
-          // 校验（在途/累计上限）在引擎内；stale 静默丢弃，经 Bus 由人类网关广播
-          this.deps.engine.agentDelta(id, frame.eventId, frame.delta);
-          return;
-        }
-        case 'trace': {
-          // 校验（在途/单 event 上限）在引擎内；stale 静默丢弃，经 Bus 由人类网关广播
-          this.deps.engine.agentTrace(id, frame.eventId, frame.kind, frame.text);
-          return;
-        }
-        case 'ping': {
-          this.send(ws, { type: 'pong', t: frame.t });
-          return;
-        }
+      } catch (e: any) {
+        // 纵深防御：未预期异常不击穿进程（引擎已校验的语义错误不会到达这里）
+        console.error(`[agent-gateway] 未预期异常: ${e?.message ?? e}`);
+        this.close(ws, 4000, 'internal_error');
       }
     });
 

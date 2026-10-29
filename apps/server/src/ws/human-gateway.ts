@@ -117,69 +117,75 @@ export class HumanGateway {
     ws.on('error', () => {});
 
     ws.on('message', (data) => {
-      let frame: any;
       try {
-        frame = HumanClientSchema.parse(JSON.parse(String(data)));
-      } catch {
-        return;
-      }
-      if (!joined) {
-        if (frame.type !== 'hello') return this.close(ws, 4000, 'hello_first');
-        const room = this.deps.storage.getRoom(frame.roomId);
-        if (!room) return this.close(ws, 4004, 'room_not_found');
-        let keyId: string | null = null;
-        let keyRow = null;
-        if (frame.key) {
-          keyRow = this.deps.storage.getKeyByHash(sha256(frame.key));
-          if (!keyRow || keyRow.status === 'banned') return this.close(ws, 4001, 'invalid_key');
-          keyId = keyRow.id;
-        }
-        if (room.visibility === 'private') {
-          const allowed = keyId && this.deps.storage.getMember(room.id, keyId);
-          if (!allowed) return this.close(ws, 4003, 'forbidden');
-        }
-        joined = { roomId: room.id, keyId };
-        clearTimeout(authTimer);
-        let set = this.rooms.get(room.id);
-        if (!set) {
-          set = new Set();
-          this.rooms.set(room.id, set);
-        }
-        set.add(ws);
-        this.send(ws, {
-          type: 'ready',
-          room: roomSummary(this.deps.storage, room),
-          messages: this.deps.storage.listMessages(room.id, { limit: 50 })
-            .map((m) => ({ ...toChatMessage(m), likes: this.deps.storage.countLikes(m.id) })),
-          agents: this.deps.engine.listPresence(room.id),
-          you: keyRow
-            ? { keyId: keyRow.id, name: humanName(keyRow), isOwner: room.ownerKeyId === keyRow.id }
-            : null,
-        });
-        return;
-      }
-      if (frame.type === 'ping') {
-        this.send(ws, { type: 'pong', t: frame.t });
-        return;
-      }
-      if (frame.type === 'post') {
-        if (!joined.keyId) {
-          this.send(ws, { type: 'error', code: 'unauthorized', message: '发言需要 key' });
-          return;
-        }
-        const key = this.deps.storage.getKey(joined.keyId);
-        if (!key || key.status === 'banned') return this.close(ws, 4001, 'invalid_key');
-        const room = this.deps.storage.getRoom(joined.roomId);
-        if (room?.visibility === 'private' && !this.deps.storage.getMember(room.id, key.id)) {
-          this.send(ws, { type: 'error', code: 'forbidden', message: '不是房间成员' });
-          return;
-        }
+        let frame: any;
         try {
-          this.deps.engine.humanPost(joined.roomId, key.id, humanName(key), frame.text);
-        } catch (e: any) {
-          this.send(ws, { type: 'error', code: e.code ?? 'post_failed', message: String(e.message) });
+          frame = HumanClientSchema.parse(JSON.parse(String(data)));
+        } catch {
+          return;
         }
-        return;
+        if (!joined) {
+          if (frame.type !== 'hello') return this.close(ws, 4000, 'hello_first');
+          const room = this.deps.storage.getRoom(frame.roomId);
+          if (!room) return this.close(ws, 4004, 'room_not_found');
+          let keyId: string | null = null;
+          let keyRow = null;
+          if (frame.key) {
+            keyRow = this.deps.storage.getKeyByHash(sha256(frame.key));
+            if (!keyRow || keyRow.status === 'banned') return this.close(ws, 4001, 'invalid_key');
+            keyId = keyRow.id;
+          }
+          if (room.visibility === 'private') {
+            const allowed = keyId && this.deps.storage.getMember(room.id, keyId);
+            if (!allowed) return this.close(ws, 4003, 'forbidden');
+          }
+          joined = { roomId: room.id, keyId };
+          clearTimeout(authTimer);
+          let set = this.rooms.get(room.id);
+          if (!set) {
+            set = new Set();
+            this.rooms.set(room.id, set);
+          }
+          set.add(ws);
+          this.send(ws, {
+            type: 'ready',
+            room: roomSummary(this.deps.storage, room),
+            messages: this.deps.storage.listMessages(room.id, { limit: 50 })
+              .map((m) => ({ ...toChatMessage(m), likes: this.deps.storage.countLikes(m.id) })),
+            agents: this.deps.engine.listPresence(room.id),
+            you: keyRow
+              ? { keyId: keyRow.id, name: humanName(keyRow), isOwner: room.ownerKeyId === keyRow.id }
+              : null,
+          });
+          return;
+        }
+        if (frame.type === 'ping') {
+          this.send(ws, { type: 'pong', t: frame.t });
+          return;
+        }
+        if (frame.type === 'post') {
+          if (!joined.keyId) {
+            this.send(ws, { type: 'error', code: 'unauthorized', message: '发言需要 key' });
+            return;
+          }
+          const key = this.deps.storage.getKey(joined.keyId);
+          if (!key || key.status === 'banned') return this.close(ws, 4001, 'invalid_key');
+          const room = this.deps.storage.getRoom(joined.roomId);
+          if (room?.visibility === 'private' && !this.deps.storage.getMember(room.id, key.id)) {
+            this.send(ws, { type: 'error', code: 'forbidden', message: '不是房间成员' });
+            return;
+          }
+          try {
+            this.deps.engine.humanPost(joined.roomId, key.id, humanName(key), frame.text);
+          } catch (e: any) {
+            this.send(ws, { type: 'error', code: e.code ?? 'post_failed', message: String(e.message) });
+          }
+          return;
+        }
+      } catch (e: any) {
+        // 纵深防御：未预期异常（含 hello 路径的引擎调用）不击穿进程
+        console.error(`[human-gateway] 未预期异常: ${e?.message ?? e}`);
+        this.close(ws, 4000, 'internal_error');
       }
     });
 
