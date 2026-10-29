@@ -178,9 +178,10 @@ pre code { background: none; color: inherit; padding: 0; border-radius: 0; }
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   height: 48px; padding: 0 24px;
   border-radius: var(--radius); font-size: 15px; font-weight: 700; font-family: var(--num);
-  cursor: pointer; border: 1px solid transparent; background: var(--surface); color: var(--ink);
+  cursor: pointer; border: 1px solid var(--line); background: var(--surface); color: var(--ink); box-shadow: var(--shadow-1);
   transition: transform var(--dur-fast) var(--ease-spring), box-shadow var(--dur-fast), background var(--dur-fast), border-color var(--dur-fast);
 }
+/* 裸 .btn（无修饰类）= 次级操作：可见的描边与投影，避免白底白框在卡片上隐形 */
 .btn.primary { background: var(--primary); border-color: var(--primary); color: var(--primary-ink); box-shadow: var(--shadow-1); }
 .btn.primary:hover { box-shadow: var(--shadow-2); transform: translateY(-1px); }
 .btn.ghost { background: var(--surface); border-color: var(--line); color: var(--ink); box-shadow: var(--shadow-1); }

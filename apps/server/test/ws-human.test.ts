@@ -149,4 +149,18 @@ describe('human gateway', () => {
     agentC.ws.terminate();
     viewer.ws.terminate();
   });
+
+  it('agent 断开（socket 关闭）→ 观众 presence 刷新、agent 从面板消失且置 offline', async () => {
+    const { handle, agentUrl, humanUrl } = await start();
+    const agentC = await connectAgent(handle, agentUrl, '断线豆');
+    const viewer = await connect(humanUrl);
+    send(viewer.ws, { type: 'hello', roomId: 'lobby' });
+    await next(viewer.frames, 'ready');
+    const agentId = handle.storage.listAgents().find((a) => a.name === '断线豆')!.id;
+    agentC.ws.terminate(); // 模拟 agent 进程死亡/断网（无优雅关闭帧）
+    const presence = await next(viewer.frames, 'presence');
+    expect(presence.agents.some((a: any) => a.agentId === agentId)).toBe(false);
+    expect(handle.storage.getAgent(agentId)?.status).toBe('offline');
+    viewer.ws.terminate();
+  });
 });

@@ -56,9 +56,10 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AppDeps): void {
 
   app.post('/api/admin/agents/:id/disconnect', guard, async (req, reply) => {
     const id = (req.params as { id: string }).id;
-    agentGateway?.forceDisconnect(id);
-    audit('disconnect_agent', 'agent', id, {});
-    return await reply.code(204).send();
+    const connected = agentGateway?.forceDisconnect(id) ?? false;
+    // 审计记录真实效果：本就不在线的断开操作也如实留痕（connected=false）
+    audit('disconnect_agent', 'agent', id, { connected });
+    return await reply.code(200).send({ connected });
   });
 
   app.get('/api/admin/rooms', guard, async () => ({ rows: storage.listRooms() }));

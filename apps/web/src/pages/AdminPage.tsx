@@ -48,6 +48,8 @@ export function AdminPage() {
   // 跨房检索：消息/事件 tab 的房间筛选（'' = 全部房间）
   const [msgRoom, setMsgRoom] = useState('');
   const [eventRoom, setEventRoom] = useState('');
+  // 操作结果提示（如断开 agent 的真实效果），随下次操作覆盖
+  const [notice, setNotice] = useState<string | null>(null);
 
   const call = useCallback(async <T,>(path: string, opts?: Parameters<typeof api<T>>[1]): Promise<T> => {
     return api<T>(path, { ...opts, admin: true });
@@ -99,6 +101,18 @@ export function AdminPage() {
 
   const act = async (path: string, method = 'POST', body?: unknown): Promise<void> => {
     await call(path, { method, body });
+    await load();
+  };
+
+  // 断开 agent：如实反馈「已断开」还是「本就不在线」，避免点了没反应的困惑
+  const disconnectAgent = async (id: string): Promise<void> => {
+    setNotice(null);
+    try {
+      const r = await call<{ connected: boolean }>(`/admin/agents/${id}/disconnect`, { method: 'POST' });
+      setNotice(r.connected ? `已断开 ${id}` : `${id} 当前没有活跃连接（本就不在线）`);
+    } catch {
+      setNotice(`断开 ${id} 失败`);
+    }
     await load();
   };
 
@@ -201,7 +215,7 @@ export function AdminPage() {
                     <td><span className="tag">{zh(AGENT_STATUS, a.status)}</span></td>
                     <td className="mono">{a.keyId}</td>
                     <td>{a.score ? `${a.score.total} 分` : '—'}</td>
-                    <td><button className="btn sm" onClick={() => void act(`/admin/agents/${a.id}/disconnect`)}>断开</button></td>
+                    <td><button className="btn sm" onClick={() => void disconnectAgent(a.id)}>断开</button></td>
                   </tr>
                 ))}
               </tbody>
@@ -321,6 +335,7 @@ export function AdminPage() {
         )}
       </div>
       {error && <div className="error-text">{error}</div>}
+      {notice && <div className="muted" role="status">{notice}</div>}
     </section>
   );
 }

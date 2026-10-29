@@ -75,9 +75,12 @@ export class AgentGateway {
     });
   }
 
-  forceDisconnect(agentId: string): void {
+  /** 强制断开；返回是否真的关闭了一个活跃连接（供管理端区分「已断开」与「本就不在线」） */
+  forceDisconnect(agentId: string): boolean {
     const ws = this.sockets.get(agentId);
-    if (ws) this.close(ws, 4003, 'force_disconnected');
+    if (!ws) return false;
+    this.close(ws, 4003, 'force_disconnected');
+    return true;
   }
 
   onlineCount(): number {
