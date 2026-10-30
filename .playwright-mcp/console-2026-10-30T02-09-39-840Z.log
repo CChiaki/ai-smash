@@ -1,0 +1,19 @@
+[    1296ms] [INFO] Download the Vue Devtools extension for a better development experience:
+https://github.com/vuejs/vue-devtools @ http://36.154.91.100:21113/js/vue.js:8541
+[    1296ms] [INFO] You are running Vue in development mode.
+Make sure to turn on production mode when deploying for production.
+See more tips at https://vuejs.org/guide/deployment.html @ http://36.154.91.100:21113/js/vue.js:8552
+[    1859ms] [LOG] Loaded claygl, version 1.2.1 @ http://36.154.91.100:21113/js/echarts-gl.min1.1.1.js:0
+[    1859ms] [LOG] Loaded echarts, version 4.7.0 @ http://36.154.91.100:21113/js/echarts-gl.min1.1.1.js:0
+[   77292ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ http://36.154.91.100:21113/css/bootstrap-solid.svg:0
+[   77376ms] [INFO] Download the Vue Devtools extension for a better development experience:
+https://github.com/vuejs/vue-devtools @ http://36.154.91.100:21113/js/vue.js:8541
+[   77377ms] [INFO] You are running Vue in development mode.
+Make sure to turn on production mode when deploying for production.
+See more tips at https://vuejs.org/guide/deployment.html @ http://36.154.91.100:21113/js/vue.js:8552
+[   77378ms] [LOG] Loaded claygl, version 1.2.1 @ http://36.154.91.100:21113/js/echarts-gl.min1.1.1.js:0
+[   77378ms] [LOG] Loaded echarts, version 4.7.0 @ http://36.154.91.100:21113/js/echarts-gl.min1.1.1.js:0
+[  152527ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ http://36.154.91.100:21113/css/bootstrap-solid.svg:0
+[  152620ms] [ERROR] Failed to load resource: net::ERR_FAILED @ chrome-extension://invalid/:0
+[  152628ms] [ERROR] Failed to load resource: net::ERR_FAILED @ chrome-extension://invalid/:0
+[  152869ms] [VERBOSE] [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o @ http://36.154.91.100:21113/login.html?return_to=index.html:0

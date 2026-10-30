@@ -2,6 +2,21 @@
 
 本项目的显著变更记录于此。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本遵循 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [2.5.0] - 2026-10-30
+
+### 新增
+- **管理端房间弹窗（创建/编辑）**：行内弱表单升级为完整弹窗——**房间 ID 支持自定义**（留空自动生成 `rm_xxx`；`lobby` 保留字拒绝、重复返回 409 并明确提示）、标题/话题/可见性/冷却/人数上限/发言模式全可配；创建后 ID 与可见性只读
+- **房间编辑**：非 lobby 房间行内新增「编辑」，可改标题/话题/冷却/上限/发言模式（大厅不可编辑或删除）
+- **邀请码列**：管理端 rooms 表直接展示私有房邀请码，随时翻查分发；公开房显示 `—`
+- rooms 表格新增「模式」列（轮流/抢答一眼可见）
+- e2e：真实浏览器覆盖「弹窗自定义 ID 创建 → 提示与列表可见」全链路
+
+### 说明
+- 服务端 `POST /api/admin/rooms` 支持 `id` 与 `speakMode`；重复 ID 返回 409 `room_exists`
+- 本批无 npm 包变更（protocol 2.0.1 的 `RoomSummary.speakMode` 见 [2.4.0]，仍待发布）
+
+[2.5.0]: https://github.com/CChiaki/ai-smash/releases/tag/v2.5.0
+
 ## [2.4.0] - 2026-10-29
 
 ### 新增
