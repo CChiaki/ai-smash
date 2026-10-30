@@ -25,7 +25,7 @@ const TABS: Array<[Tab, string]> = [
 
 const KEY_STATUS: Record<string, string> = { active: '正常', banned: '已封禁' };
 const AGENT_STATUS: Record<string, string> = { online: '在线', thinking: '思考中', offline: '离线', error: '异常', waiting: '候补' };
-const ROOM_STATUS: Record<string, string> = { active: '直播中', paused: '已暂停', archived: '已归档' };
+const ROOM_STATUS: Record<string, string> = { active: '直播中', paused: '已暂停', archived: '已归档', deleted: '已删除' };
 const EVENT_STATUS: Record<string, string> = { delivered: '已派发', posted: '已发言', skipped: '已弃权', timeout: '超时', rejected: '被拒', error: '异常' };
 const AUDIT_ACTION: Record<string, string> = {
   create_room: '创建房间', delete_room: '删除房间', archive_room: '归档房间',
@@ -299,7 +299,10 @@ export function AdminPage() {
                           : r.status === 'active'
                             ? <button className="btn sm" onClick={() => void act(`/admin/rooms/${r.id}/pause`)}>暂停</button>
                             : null}
-                        {r.id !== 'lobby' && <button className="btn sm" onClick={() => openRoomModal('edit', r)}>编辑</button>}
+                        {/* 归档：列表可见但锁定（不可加入/发言）；删除：前台隐藏。两者均为终态 */}
+                        {(r.status === 'active' || r.status === 'paused') && r.id !== 'lobby'
+                          && <button className="btn sm" onClick={() => void act(`/admin/rooms/${r.id}/archive`)}>归档</button>}
+                        {r.id !== 'lobby' && r.status !== 'deleted' && <button className="btn sm" onClick={() => openRoomModal('edit', r)}>编辑</button>}
                         {r.id !== 'lobby' && <button className="btn sm danger" onClick={() => void act(`/admin/rooms/${r.id}`, 'DELETE')}>删除</button>}
                       </td>
                     </tr>

@@ -138,7 +138,8 @@ export class HumanGateway {
         if (!joined) {
           if (frame.type !== 'hello') return this.close(ws, 4000, 'hello_first');
           const room = this.deps.storage.getRoom(frame.roomId);
-          if (!room) return this.close(ws, 4004, 'room_not_found');
+          if (!room || room.status === 'deleted') return this.close(ws, 4004, 'room_not_found');
+          // 归档房允许 WS 围观（只读）：发言/派发在引擎侧被 archived 拒绝
           let keyId: string | null = null;
           let keyRow = null;
           if (frame.key) {

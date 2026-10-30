@@ -15,7 +15,7 @@ export interface AgentRow {
 export interface RoomRow {
   id: string; title: string; topic: string | null;
   visibility: 'public' | 'private'; ownerKeyId: string | null;
-  status: 'active' | 'paused' | 'archived';
+  status: 'active' | 'paused' | 'archived' | 'deleted';
   inviteCode: string | null; cooldownMs: number; maxAgents: number;
   speakMode: 'roundrobin' | 'race';
   createdAt: string;

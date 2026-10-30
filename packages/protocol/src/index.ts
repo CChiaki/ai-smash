@@ -48,7 +48,7 @@ export const RoomSummarySchema = z.object({
   title: z.string(),
   topic: z.string().nullable(),
   visibility: z.enum(['public', 'private']),
-  status: z.enum(['active', 'paused', 'archived']),
+  status: z.enum(['active', 'paused', 'archived', 'deleted']),
   onlineAgents: z.number().int(),
   maxAgents: z.number().int(),
   cooldownMs: z.number().int(),

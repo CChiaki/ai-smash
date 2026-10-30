@@ -96,14 +96,26 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AppDeps): void {
 
   app.post('/api/admin/rooms/:id/pause', guard, async (req, reply) => {
     const id = (req.params as { id: string }).id;
-    engine.pauseRoom(id);
+    try {
+      engine.pauseRoom(id);
+    } catch (e) {
+      const mapped = sendEngineError(reply, e);
+      if (mapped) return mapped; // 归档/删除是终态：不可暂停
+      throw e;
+    }
     audit('pause_room', 'room', id, {});
     return await reply.code(204).send();
   });
 
   app.post('/api/admin/rooms/:id/resume', guard, async (req, reply) => {
     const id = (req.params as { id: string }).id;
-    engine.resumeRoom(id);
+    try {
+      engine.resumeRoom(id);
+    } catch (e) {
+      const mapped = sendEngineError(reply, e);
+      if (mapped) return mapped; // 归档/删除是终态：不可恢复
+      throw e;
+    }
     audit('resume_room', 'room', id, {});
     return await reply.code(204).send();
   });
@@ -119,7 +131,8 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AppDeps): void {
   app.delete('/api/admin/rooms/:id', guard, async (req, reply) => {
     const id = (req.params as { id: string }).id;
     if (id === 'lobby') return reply.code(400).send({ error: 'lobby_immutable' });
-    storage.updateRoom(id, { status: 'archived' }); // 规格 11：房间软删除 = 归档
+    // 删除 ≠ 归档：deleted 状态在前台各列表/详情中隐藏（归档仍可见但锁定）
+    storage.updateRoom(id, { status: 'deleted' });
     audit('delete_room', 'room', id, {});
     return await reply.code(204).send();
   });

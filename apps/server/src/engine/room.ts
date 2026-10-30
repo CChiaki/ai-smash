@@ -31,7 +31,7 @@ export class RoomEngine {
   joinRoom(agentId: string, roomId: string): { status: 'active' | 'waiting' } {
     const room = this.deps.storage.getRoom(roomId);
     if (!room) throw new EngineError('not_found');
-    if (room.status === 'archived') throw new EngineError('archived');
+    if (room.status === 'archived' || room.status === 'deleted') throw new EngineError('archived');
     const agent = this.deps.storage.getAgent(agentId);
     if (!agent) throw new EngineError('not_found');
     const existing = this.deps.storage.getRoomAgent(roomId, agentId);
@@ -81,13 +81,20 @@ export class RoomEngine {
   }
 
   pauseRoom(roomId: string): void {
-    const room = this.deps.storage.updateRoom(roomId, { status: 'paused' });
-    this.deps.bus.emit(Topics.roomUpdate, { room });
+    const room = this.deps.storage.getRoom(roomId);
+    if (!room) throw new EngineError('not_found');
+    // 归档/删除是终态：不允许暂停/恢复改写状态
+    if (room.status === 'archived' || room.status === 'deleted') throw new EngineError('archived');
+    const updated = this.deps.storage.updateRoom(roomId, { status: 'paused' });
+    this.deps.bus.emit(Topics.roomUpdate, { room: updated });
   }
 
   resumeRoom(roomId: string): void {
-    const room = this.deps.storage.updateRoom(roomId, { status: 'active' });
-    this.deps.bus.emit(Topics.roomUpdate, { room });
+    const room = this.deps.storage.getRoom(roomId);
+    if (!room) throw new EngineError('not_found');
+    if (room.status === 'archived' || room.status === 'deleted') throw new EngineError('archived');
+    const updated = this.deps.storage.updateRoom(roomId, { status: 'active' });
+    this.deps.bus.emit(Topics.roomUpdate, { room: updated });
     const latest = this.deps.storage.listMessages(roomId, { limit: 1 }).at(-1);
     if (latest) this.dispatchForNewMessage(roomId, toChatMessage(latest));
   }
@@ -138,7 +145,7 @@ export class RoomEngine {
     const room = this.deps.storage.getRoom(roomId);
     if (!room) throw new EngineError('not_found');
     // 规格 8.4：暂停 = 停止向 agent 派发，人类仍可发言（恢复时补派发）；只有归档才拒绝
-    if (room.status === 'archived') throw new EngineError('archived');
+    if (room.status === 'archived' || room.status === 'deleted') throw new EngineError('archived');
     if (text.trim().length === 0 || text.length > this.limits.maxTextLen) {
       throw new EngineError('invalid');
     }

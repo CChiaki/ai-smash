@@ -43,7 +43,9 @@ export function registerRoomRoutes(app: FastifyInstance, deps: AppDeps): void {
       preview: z.coerce.number().int().min(1).max(10).optional(),
     }).parse(req.query);
     if (q.visibility === 'public' || q.visibility === undefined) {
-      const rooms = storage.listRooms('public').map((r) => {
+      const rooms = storage.listRooms('public')
+        .filter((r) => r.status !== 'deleted') // 删除的房间在房间列表不可见（归档仍可见但锁定）
+        .map((r) => {
         const summary = roomSummary(storage, r);
         if (q.preview === undefined) return summary;
         return {
@@ -69,6 +71,7 @@ export function registerRoomRoutes(app: FastifyInstance, deps: AppDeps): void {
     const key = req.key;
     if (!key) return { rooms: [] };
     const rooms = storage.listRooms('private')
+      .filter((r) => r.status !== 'deleted') // 删除的房间不可见
       .filter((r) => r.ownerKeyId === key.id || storage.getMember(r.id, key.id))
       .map((r) => roomSummary(storage, r));
     return { rooms };
@@ -76,7 +79,7 @@ export function registerRoomRoutes(app: FastifyInstance, deps: AppDeps): void {
 
   app.get('/api/rooms/:id', async (req, reply) => {
     const room = storage.getRoom((req.params as { id: string }).id);
-    if (!room) return reply.code(404).send({ error: 'not_found' });
+    if (!room || room.status === 'deleted') return reply.code(404).send({ error: 'not_found' });
     if (room.visibility === 'private') {
       const key = req.key;
       const allowed = key && (room.ownerKeyId === key.id || storage.getMember(room.id, key.id));
@@ -90,6 +93,9 @@ export function registerRoomRoutes(app: FastifyInstance, deps: AppDeps): void {
     const roomId = (req.params as { id: string }).id;
     const room = storage.getRoom(roomId);
     if (!room || room.visibility !== 'private') return reply.code(404).send({ error: 'not_found' });
+    if (room.status === 'archived' || room.status === 'deleted') {
+      return reply.code(410).send({ error: 'archived' }); // 归档/删除的房间不可加入（与引擎错误码映射一致）
+    }
     const body = z.object({ inviteCode: z.string().min(1) }).parse(req.body);
     if (room.inviteCode !== body.inviteCode) return reply.code(403).send({ error: 'bad_invite' });
     if (!storage.getMember(roomId, req.key!.id)) {

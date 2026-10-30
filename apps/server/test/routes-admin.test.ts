@@ -87,6 +87,24 @@ describe('admin routes', () => {
     expect(one.json().rows.map((r: any) => r.text)).toEqual(['别房消息']);
   });
 
+  it('删除 ≠ 归档：delete 置 deleted 且前台隐藏，archive 置 archived；终态不可 resume/pause', async () => {
+    const { handle } = await start();
+    const mk = (id: string) => handle.storage.createRoom({
+      id, title: id, topic: null, visibility: 'public',
+      ownerKeyId: null, inviteCode: null, cooldownMs: 2000, maxAgents: 20, at: 't1',
+    });
+    mk('rm_arc'); mk('rm_del');
+    await handle.app.inject({ method: 'POST', url: '/api/admin/rooms/rm_arc/archive', headers: admin() });
+    await handle.app.inject({ method: 'DELETE', url: '/api/admin/rooms/rm_del', headers: admin() });
+    expect(handle.storage.getRoom('rm_arc')?.status).toBe('archived');
+    expect(handle.storage.getRoom('rm_del')?.status).toBe('deleted'); // 不再与归档同状态
+    // 终态不可复活/暂停
+    const resume = await handle.app.inject({ method: 'POST', url: '/api/admin/rooms/rm_arc/resume', headers: admin() });
+    expect(resume.statusCode).toBe(410); // 终态：410 Gone
+    const pause = await handle.app.inject({ method: 'POST', url: '/api/admin/rooms/rm_del/pause', headers: admin() });
+    expect(pause.statusCode).toBe(410);
+  });
+
   it('管理员代建支持自定义 ID：重复 409、lobby 保留字 400、非法格式 400', async () => {
     const { handle } = await start();
     const custom = await handle.app.inject({
@@ -142,7 +160,7 @@ describe('admin routes', () => {
 
     const del = await handle.app.inject({ method: 'DELETE', url: `/api/admin/rooms/${pubRoom.id}`, headers: admin() });
     expect(del.statusCode).toBe(204);
-    expect(handle.storage.getRoom(pubRoom.id)?.status).toBe('archived');
+    expect(handle.storage.getRoom(pubRoom.id)?.status).toBe('deleted'); // 删除 ≠ 归档
     // 审计入账：create_room 与 delete_room
     const audit = await handle.app.inject({ method: 'GET', url: '/api/admin/audit?limit=50', headers: admin() });
     const actions = audit.json().rows.map((r: any) => r.action);

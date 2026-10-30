@@ -96,6 +96,28 @@ describe('POST /api/rooms/:id/join', () => {
   });
 });
 
+describe('房间终态可见性与加入', () => {
+  it('deleted 房间在列表/详情隐藏；归档私有房不可凭码加入', async () => {
+    const { app, storage } = makeApp();
+    const owner = await createKeyRaw(app);
+    const pub = (await createRoom(app, owner, { visibility: 'public' })).json();
+    const priv = (await createRoom(app, owner, { visibility: 'private' })).json();
+    storage.updateRoom(pub.id, { status: 'deleted' });
+    storage.updateRoom(priv.id, { status: 'archived' });
+
+    const list = await app.inject({ method: 'GET', url: '/api/rooms?visibility=public' });
+    expect(list.json().rooms.map((r: any) => r.id)).not.toContain(pub.id);   // 删除 → 列表不可见
+    const detail = await app.inject({ method: 'GET', url: `/api/rooms/${pub.id}` });
+    expect(detail.statusCode).toBe(404);                                      // 详情也不可见
+    const other = await createKeyRaw(app);
+    const join = await app.inject({
+      method: 'POST', url: `/api/rooms/${priv.id}/join`, headers: bearer(other), payload: { inviteCode: priv.inviteCode },
+    });
+    expect(join.statusCode).toBe(410);                                        // 归档房不可加入（410 Gone）
+    expect(join.json().error).toBe('archived');
+  });
+});
+
 describe('GET /api/rooms/:id/messages', () => {
   it('公开房匿名可读历史', async () => {
     const { app, storage, engine } = makeApp();
