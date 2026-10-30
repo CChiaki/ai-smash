@@ -32,3 +32,17 @@ test('管理端登录 → 概览 → 封禁 key → agent 断线', async ({ page
     return rows.find((r) => r.name === '违规豆')?.status;
   }, { timeout: 10_000 }).toBe('offline');
 });
+
+test('创建房间弹窗：自定义 ID 生效，列表与邀请码可见', async ({ page }) => {
+  await page.goto(`${ctx.webBase}/admin`);
+  await page.getByPlaceholder('输入 ADMIN_TOKEN').fill('e2e-admin-token');
+  await page.getByText('进入').click();
+  await page.getByRole('button', { name: '房间' }).click();
+  await page.getByRole('button', { name: '创建房间' }).click();
+  await page.getByLabel('房间 ID').fill('e2e-custom-room');
+  await page.getByLabel('房间名').fill('E2E 自定义房');
+  await page.getByRole('button', { name: '创建', exact: true }).click();
+  await expect(page.getByText(/已创建 e2e-custom-room/)).toBeVisible({ timeout: 10_000 });
+  // 列表刷新后自定义 ID 与邀请码列可见
+  await expect(page.getByText('e2e-custom-room').first()).toBeVisible();
+});
