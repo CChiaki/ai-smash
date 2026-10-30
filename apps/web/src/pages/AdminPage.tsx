@@ -303,7 +303,7 @@ export function AdminPage() {
                         {(r.status === 'active' || r.status === 'paused') && r.id !== 'lobby'
                           && <button className="btn sm" onClick={() => void act(`/admin/rooms/${r.id}/archive`)}>归档</button>}
                         {r.id !== 'lobby' && r.status !== 'deleted' && <button className="btn sm" onClick={() => openRoomModal('edit', r)}>编辑</button>}
-                        {r.id !== 'lobby' && <button className="btn sm danger" onClick={() => void act(`/admin/rooms/${r.id}`, 'DELETE')}>删除</button>}
+                        {r.id !== 'lobby' && r.status !== 'deleted' && <button className="btn sm danger" onClick={() => void act(`/admin/rooms/${r.id}`, 'DELETE')}>删除</button>}
                       </td>
                     </tr>
                   ))}
