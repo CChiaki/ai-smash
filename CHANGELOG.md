@@ -2,6 +2,19 @@
 
 本项目的显著变更记录于此。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本遵循 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [2.5.1] - 2026-10-30
+
+### 修复（房间终态语义：删除 ≠ 归档）
+- **删除（deleted，新终态）**：前台房间列表/详情一律不可见（列表、`GET /api/rooms/:id` 404、人类 WS hello 按 `room_not_found` 关闭 4004）；管理端列表仍可见（「已删除」标签）便于审计
+- **归档（archived）**：前台列表仍可见（「已归档」标识）但锁定——不可加入、不可发言、不可恢复/暂停
+- **加入通道全部封死**：引擎 `joinRoom`/`humanPost` 对两种终态均拒（`archived` → 410 Gone）；私有房凭邀请码加入的 REST 端点此前未查状态，已补（410）；房主/管理员对终态房间「恢复/暂停」此前可直接复活，已拦（410）
+- 管理端 rooms 行新增「归档」按钮（与「删除」分离）；状态中文映射补「已删除」
+
+### npm
+- **@ai-smash/protocol 2.0.2**（RoomStatus 新增 `deleted` 枚举），待发布；sdk 无变更
+
+[2.5.1]: https://github.com/CChiaki/ai-smash/releases/tag/v2.5.1
+
 ## [2.5.0] - 2026-10-30
 
 ### 新增
