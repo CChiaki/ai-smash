@@ -64,17 +64,22 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AppDeps): void {
 
   app.get('/api/admin/rooms', guard, async () => ({ rows: storage.listRooms() }));
 
-  // 管理员代建房间：无个人 key 归属（ownerKeyId=null，同 lobby 形态）；私有房自动发邀请码
+  // 管理员代建房间：无个人 key 归属（ownerKeyId=null，同 lobby 形态）；私有房自动发邀请码；
+  // 支持自定义房间 ID（保留字 lobby 不可用、重复返回 409）
   app.post('/api/admin/rooms', guard, async (req, reply) => {
     const body = z.object({
+      id: z.string().regex(/^[A-Za-z0-9_-]{2,64}$/).optional(),
       title: z.string().min(1).max(64),
       topic: z.string().max(200).nullish(),
       visibility: z.enum(['public', 'private']).default('public'),
       cooldownMs: z.number().int().min(0).max(60_000).optional(),
       maxAgents: z.number().int().min(2).max(200).optional(),
+      speakMode: z.enum(['roundrobin', 'race']).optional(),
     }).parse(req.body);
+    if (body.id === 'lobby') return reply.code(400).send({ error: 'lobby_immutable' });
+    if (body.id && storage.getRoom(body.id)) return reply.code(409).send({ error: 'room_exists' });
     const room = storage.createRoom({
-      id: newId('rm'),
+      id: body.id ?? newId('rm'),
       title: body.title,
       topic: body.topic ?? null,
       visibility: body.visibility,
@@ -82,9 +87,10 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AppDeps): void {
       inviteCode: body.visibility === 'private' ? newInviteCode() : null,
       cooldownMs: body.cooldownMs ?? DEFAULT_LIMITS.cooldownMs,
       maxAgents: Math.min(body.maxAgents ?? DEFAULT_LIMITS.roomMaxAgents, DEFAULT_LIMITS.roomHardCap),
+      ...(body.speakMode ? { speakMode: body.speakMode } : {}),
       at: new Date().toISOString(),
     });
-    audit('create_room', 'room', room.id, { visibility: body.visibility });
+    audit('create_room', 'room', room.id, { visibility: body.visibility, speakMode: room.speakMode });
     return await reply.code(201).send({ ...roomSummary(storage, room), inviteCode: room.inviteCode });
   });
 

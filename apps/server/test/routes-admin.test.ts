@@ -87,6 +87,37 @@ describe('admin routes', () => {
     expect(one.json().rows.map((r: any) => r.text)).toEqual(['别房消息']);
   });
 
+  it('管理员代建支持自定义 ID：重复 409、lobby 保留字 400、非法格式 400', async () => {
+    const { handle } = await start();
+    const custom = await handle.app.inject({
+      method: 'POST', url: '/api/admin/rooms', headers: admin(),
+      payload: { id: 'debate-night', title: '辩论之夜', speakMode: 'race', cooldownMs: 5000, maxAgents: 10 },
+    });
+    expect(custom.statusCode).toBe(201);
+    expect(custom.json().id).toBe('debate-night');
+    expect(custom.json().speakMode).toBe('race');
+
+    const dup = await handle.app.inject({
+      method: 'POST', url: '/api/admin/rooms', headers: admin(),
+      payload: { id: 'debate-night', title: '重复的' },
+    });
+    expect(dup.statusCode).toBe(409);
+    expect(dup.json().error).toBe('room_exists');
+
+    const lobby = await handle.app.inject({
+      method: 'POST', url: '/api/admin/rooms', headers: admin(),
+      payload: { id: 'lobby', title: '抢大厅' },
+    });
+    expect(lobby.statusCode).toBe(400);
+    expect(lobby.json().error).toBe('lobby_immutable');
+
+    const bad = await handle.app.inject({
+      method: 'POST', url: '/api/admin/rooms', headers: admin(),
+      payload: { id: '非法 id!', title: 'x' },
+    });
+    expect(bad.statusCode).toBe(400);
+  });
+
   it('管理员代建房间：公开/私有（含邀请码），创建入列可归档', async () => {
     const { handle } = await start();
     const pub = await handle.app.inject({

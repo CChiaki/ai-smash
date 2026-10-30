@@ -231,20 +231,22 @@ export class SqliteStorage implements Storage {
   private insertRoom(input: {
     id: string; title: string; topic: string | null;
     visibility: 'public' | 'private'; ownerKeyId: string | null;
-    inviteCode: string | null; cooldownMs: number; maxAgents: number; at: string;
+    inviteCode: string | null; cooldownMs: number; maxAgents: number;
+    speakMode?: 'roundrobin' | 'race'; at: string;
   }): RoomRow {
     this.db.prepare(
-      `INSERT INTO rooms (id, title, topic, visibility, owner_key_id, invite_code, cooldown_ms, max_agents, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO rooms (id, title, topic, visibility, owner_key_id, invite_code, cooldown_ms, max_agents, speak_mode, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
       input.id, input.title, input.topic, input.visibility,
-      input.ownerKeyId, input.inviteCode, input.cooldownMs, input.maxAgents, input.at,
+      input.ownerKeyId, input.inviteCode, input.cooldownMs, input.maxAgents,
+      input.speakMode ?? 'roundrobin', input.at,
     );
     return {
       id: input.id, title: input.title, topic: input.topic, visibility: input.visibility,
       ownerKeyId: input.ownerKeyId, status: 'active', inviteCode: input.inviteCode,
       cooldownMs: input.cooldownMs, maxAgents: input.maxAgents,
-      speakMode: 'roundrobin', createdAt: input.at,
+      speakMode: input.speakMode ?? 'roundrobin', createdAt: input.at,
     };
   }
 
@@ -260,9 +262,10 @@ export class SqliteStorage implements Storage {
   createRoom(input: {
     id: string; title: string; topic: string | null;
     visibility: 'public' | 'private'; ownerKeyId: string | null;
-    inviteCode: string | null; cooldownMs: number; maxAgents: number; at: string;
+    inviteCode: string | null; cooldownMs: number; maxAgents: number;
+    speakMode?: 'roundrobin' | 'race'; at: string;
   }): RoomRow {
-    return this.insertRoom(input);
+    return this.insertRoom({ ...input, speakMode: input.speakMode ?? 'roundrobin' });
   }
 
   getRoom(id: string): RoomRow | undefined {

@@ -83,31 +83,40 @@ describe('AdminPage', () => {
     expect(screen.getByText('800ms')).toBeTruthy(); // latencyMs（snake_case 读取会渲染空白）
   });
 
-  it('rooms tab：展示代建表单，创建成功提示房间 id；lobby 行无删除按钮', async () => {
+  it('rooms tab：弹窗创建房间（自定义 ID/属性），成功后提示；lobby 行无编辑/删除', async () => {
     sessionStorage.setItem('ai-smash-admin', 'tok');
     const f = vi.fn(async (url: string, init?: any) => {
       if (url === '/api/admin/overview') {
         return new Response(JSON.stringify({ keys: 1, agentsOnline: 0, activeRooms: 1, messages10m: 0, agentConnections: 0, humanConnections: 0 }), { status: 200, headers: { 'content-type': 'application/json' } });
       }
       if (url === '/api/admin/rooms' && (init?.method ?? 'GET') === 'GET') {
-        return new Response(JSON.stringify({ rows: [{ id: 'lobby', title: '大厅', status: 'active' }] }), { status: 200, headers: { 'content-type': 'application/json' } });
+        return new Response(JSON.stringify({ rows: [{ id: 'lobby', title: '大厅', status: 'active', speakMode: 'roundrobin' }] }), { status: 200, headers: { 'content-type': 'application/json' } });
       }
       if (url === '/api/admin/rooms' && init?.method === 'POST') {
-        expect(JSON.parse(init.body)).toEqual({ title: '巡演上海站', visibility: 'private' });
-        return new Response(JSON.stringify({ id: 'rm_new', inviteCode: 'ABC123' }), { status: 201, headers: { 'content-type': 'application/json' } });
+        expect(JSON.parse(init.body)).toEqual({
+          id: 'tour-sh', title: '巡演上海站', visibility: 'private',
+          cooldownMs: 5000, maxAgents: 10, speakMode: 'race',
+        });
+        return new Response(JSON.stringify({ id: 'tour-sh', inviteCode: 'ABC123' }), { status: 201, headers: { 'content-type': 'application/json' } });
       }
       return new Response(JSON.stringify({ rows: [] }), { status: 200, headers: { 'content-type': 'application/json' } });
     });
     vi.stubGlobal('fetch', f);
     render(<MemoryRouter><AdminPage /></MemoryRouter>);
-    fireEvent.click(screen.getByText('房间')); // tab 中文化
+    fireEvent.click(screen.getByText('房间'));
     await waitFor(() => expect(screen.getByText('大厅')).toBeTruthy());
-    expect(screen.getByText('lobby')).toBeTruthy(); // 房间 id 以弱化样式同行展示
+    expect(screen.getByText('lobby')).toBeTruthy();
     expect(screen.queryByText('删除')).toBeNull(); // lobby 行不给删除入口
-    fireEvent.change(screen.getByPlaceholderText('新房间名'), { target: { value: '巡演上海站' } });
-    fireEvent.click(screen.getByText('私有'));
-    fireEvent.click(screen.getByText('创建房间'));
-    await waitFor(() => expect(screen.getByText(/已创建 rm_new · 邀请码 ABC123/)).toBeTruthy());
+    expect(screen.queryByText('编辑')).toBeNull(); // lobby 行也不给编辑入口
+    fireEvent.click(screen.getByText('创建房间')); // 打开弹窗
+    fireEvent.change(screen.getByLabelText('房间 ID'), { target: { value: 'tour-sh' } });
+    fireEvent.change(screen.getByLabelText('房间名'), { target: { value: '巡演上海站' } });
+    fireEvent.click(screen.getByText('私有（凭邀请码）'));
+    fireEvent.change(screen.getByLabelText('冷却 ms'), { target: { value: '5000' } });
+    fireEvent.change(screen.getByLabelText('人数上限'), { target: { value: '10' } });
+    fireEvent.change(screen.getByLabelText('发言模式'), { target: { value: 'race' } });
+    fireEvent.click(screen.getByText('创建', { selector: '.modal .btn.primary' }));
+    await waitFor(() => expect(screen.getByText(/已创建 tour-sh · 邀请码 ABC123/)).toBeTruthy());
   });
 
   it('agents tab：只有在线 agent 显示断开按钮，离线显示占位', async () => {

@@ -41,10 +41,15 @@ export function AdminPage() {
   const [overview, setOverview] = useState<typeof EMPTY_OVERVIEW | null>(null);
   const [rows, setRows] = useState<Record<string, any[]>>({});
   const [tab, setTab] = useState<Tab>('keys');
-  // 房间代建：管理员可从管理端直接开房；私有房创建后展示邀请码便于分发
-  const [roomTitle, setRoomTitle] = useState('');
-  const [roomVisibility, setRoomVisibility] = useState<'public' | 'private'>('public');
-  const [roomCreateMsg, setRoomCreateMsg] = useState<string | null>(null);
+  // 房间弹窗（创建/编辑）：大厅不可编辑；可见性创建后不可改；其余属性全可配
+  const [roomModal, setRoomModal] = useState<{ mode: 'create' } | { mode: 'edit'; room: any } | null>(null);
+  const [form, setForm] = useState({
+    id: '', title: '', topic: '',
+    visibility: 'public' as 'public' | 'private',
+    cooldownMs: '2000', maxAgents: '20',
+    speakMode: 'roundrobin' as 'roundrobin' | 'race',
+  });
+  const [roomFormError, setRoomFormError] = useState<string | null>(null);
   // 跨房检索：消息/事件 tab 的房间筛选（'' = 全部房间）
   const [msgRoom, setMsgRoom] = useState('');
   const [eventRoom, setEventRoom] = useState('');
@@ -119,19 +124,59 @@ export function AdminPage() {
     await load();
   };
 
-  const createRoomAdmin = async (): Promise<void> => {
-    setRoomCreateMsg(null);
-    if (roomTitle.trim().length === 0) { setError('先给房间起个名字'); return; }
+  const openRoomModal = (mode: 'create' | 'edit', room?: any): void => {
+    setRoomFormError(null);
+    setForm(mode === 'edit' && room ? {
+      id: room.id, title: room.title, topic: room.topic ?? '',
+      visibility: room.visibility,
+      cooldownMs: String(room.cooldownMs), maxAgents: String(room.maxAgents),
+      speakMode: room.speakMode ?? 'roundrobin',
+    } : {
+      id: '', title: '', topic: '', visibility: 'public',
+      cooldownMs: '2000', maxAgents: '20', speakMode: 'roundrobin',
+    });
+    setRoomModal(mode === 'edit' ? { mode: 'edit', room } : { mode: 'create' });
+  };
+
+  const submitRoomModal = async (): Promise<void> => {
+    setRoomFormError(null);
+    if (form.title.trim().length === 0) { setRoomFormError('先给房间起个名字'); return; }
     try {
-      const r = await call<{ id: string; inviteCode: string | null }>('/admin/rooms', {
-        method: 'POST',
-        body: { title: roomTitle.trim(), visibility: roomVisibility },
-      });
-      setRoomTitle('');
-      setRoomCreateMsg(`已创建 ${r.id}${r.inviteCode ? ` · 邀请码 ${r.inviteCode}` : ''}`);
+      if (roomModal?.mode === 'create') {
+        const r = await call<{ id: string; inviteCode: string | null }>('/admin/rooms', {
+          method: 'POST',
+          body: {
+            ...(form.id.trim() ? { id: form.id.trim() } : {}),
+            title: form.title.trim(),
+            topic: form.topic.trim() || undefined,
+            visibility: form.visibility,
+            cooldownMs: Number(form.cooldownMs),
+            maxAgents: Number(form.maxAgents),
+            speakMode: form.speakMode,
+          },
+        });
+        setNotice(`已创建 ${r.id}${r.inviteCode ? ` · 邀请码 ${r.inviteCode}` : ''}`);
+      } else if (roomModal?.mode === 'edit') {
+        await call(`/admin/rooms/${roomModal.room.id}`, {
+          method: 'PATCH',
+          body: {
+            title: form.title.trim(),
+            topic: form.topic.trim() || null,
+            cooldownMs: Number(form.cooldownMs),
+            maxAgents: Number(form.maxAgents),
+            speakMode: form.speakMode,
+          },
+        });
+        setNotice(`已更新 ${roomModal.room.id}`);
+      }
+      setRoomModal(null);
       await load();
     } catch (e) {
-      setError(e instanceof ApiError ? `创建失败：${e.code}` : '创建失败：网络错误');
+      if (e instanceof ApiError) {
+        setRoomFormError(e.status === 409 ? '房间 ID 已存在' : e.status === 400 ? 'ID 不可用（保留字或格式不符：2~64 位字母/数字/-/_）' : `操作失败：${e.code}`);
+      } else {
+        setRoomFormError('网络错误');
+      }
     }
   };
 
@@ -235,26 +280,25 @@ export function AdminPage() {
         {tab === 'rooms' && (
           <>
             <div className="form-row" style={{ marginBottom: 16 }}>
-              <input placeholder="新房间名" value={roomTitle} onChange={(e) => setRoomTitle(e.target.value)} aria-label="新房间名" style={{ maxWidth: 240 }} />
-              <button type="button" className={`btn sm ${roomVisibility === 'public' ? 'primary' : ''}`} onClick={() => setRoomVisibility('public')}>公开</button>
-              <button type="button" className={`btn sm ${roomVisibility === 'private' ? 'primary' : ''}`} onClick={() => setRoomVisibility('private')}>私有</button>
-              <button className="btn sm primary" onClick={() => void createRoomAdmin()}>创建房间</button>
-              {roomCreateMsg && <span className="muted">{roomCreateMsg}</span>}
+              <button className="btn sm primary" onClick={() => openRoomModal('create')}>创建房间</button>
+              <span className="muted">新房间默认「轮流发言 · 冷却 2s · 上限 20 人」，可在弹窗中自定义全部属性</span>
             </div>
             <div className="table-wrap">
               <table>
-                <thead><tr><th>房间</th><th>状态</th><th>操作</th></tr></thead>
+                <thead><tr><th>房间</th><th>状态</th><th>模式</th><th>操作</th></tr></thead>
                 <tbody>
                   {(rows.rooms ?? []).map((r: any) => (
                     <tr key={r.id}>
                       <td>{r.title} <span className="muted mono">{r.id}</span></td>
                       <td><span className="tag">{zh(ROOM_STATUS, r.status)}</span></td>
+                      <td>{(r.speakMode ?? 'roundrobin') === 'race' ? '抢答' : '轮流'}</td>
                       <td>
                         {r.status === 'paused'
                           ? <button className="btn sm" onClick={() => void act(`/admin/rooms/${r.id}/resume`)}>恢复</button>
                           : r.status === 'active'
                             ? <button className="btn sm" onClick={() => void act(`/admin/rooms/${r.id}/pause`)}>暂停</button>
                             : null}
+                        {r.id !== 'lobby' && <button className="btn sm" onClick={() => openRoomModal('edit', r)}>编辑</button>}
                         {r.id !== 'lobby' && <button className="btn sm danger" onClick={() => void act(`/admin/rooms/${r.id}`, 'DELETE')}>删除</button>}
                       </td>
                     </tr>
@@ -263,7 +307,7 @@ export function AdminPage() {
               </table>
               {(rows.rooms ?? []).length === 0 && empty}
             </div>
-            <div className="muted hint">删除为软删除（归档）；大厅不可删除。</div>
+            <div className="muted hint">编辑可改标题/话题/冷却/上限/发言模式；可见性与房间 ID 创建后不可改；删除为软删除（归档）；大厅不可编辑或删除。</div>
           </>
         )}
 
@@ -344,6 +388,57 @@ export function AdminPage() {
       </div>
       {error && <div className="error-text">{error}</div>}
       {notice && <div className="muted" role="status">{notice}</div>}
+
+      {roomModal && (
+        <div className="modal-overlay" onClick={() => setRoomModal(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-label={roomModal.mode === 'create' ? '创建房间' : '编辑房间'}>
+            <h3>{roomModal.mode === 'create' ? '创建房间' : `编辑房间 · ${form.id}`}</h3>
+            {roomModal.mode === 'create' ? (
+              <label className="modal-field">房间 ID
+                <input placeholder="留空自动生成（rm_xxx）" value={form.id} onChange={(e) => setForm({ ...form, id: e.target.value })} aria-label="房间 ID" />
+                <span className="muted">2~64 位字母/数字/-/_；「lobby」为大厅保留字</span>
+              </label>
+            ) : (
+              <div className="modal-field">房间 ID<span className="mono"> {form.id}</span></div>
+            )}
+            <label className="modal-field">房间名
+              <input placeholder="如：深夜哲学" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} aria-label="房间名" />
+            </label>
+            <label className="modal-field">话题
+              <input placeholder="可选，直播间头部展示" value={form.topic} onChange={(e) => setForm({ ...form, topic: e.target.value })} aria-label="话题" />
+            </label>
+            <div className="modal-field">可见性
+              {roomModal.mode === 'create' ? (
+                <span className="form-row">
+                  <button type="button" className={`btn sm ${form.visibility === 'public' ? 'primary' : ''}`} onClick={() => setForm({ ...form, visibility: 'public' })}>公开</button>
+                  <button type="button" className={`btn sm ${form.visibility === 'private' ? 'primary' : ''}`} onClick={() => setForm({ ...form, visibility: 'private' })}>私有（凭邀请码）</button>
+                </span>
+              ) : (
+                <span>{form.visibility === 'public' ? '公开' : '私有'}<span className="muted">（创建后不可改）</span></span>
+              )}
+            </div>
+            <div className="form-row">
+              <label className="modal-field" style={{ flex: 1 }}>冷却 ms
+                <input type="number" value={form.cooldownMs} onChange={(e) => setForm({ ...form, cooldownMs: e.target.value })} aria-label="冷却 ms" />
+              </label>
+              <label className="modal-field" style={{ flex: 1 }}>人数上限
+                <input type="number" value={form.maxAgents} onChange={(e) => setForm({ ...form, maxAgents: e.target.value })} aria-label="人数上限" />
+              </label>
+              <label className="modal-field" style={{ flex: 1 }}>发言模式
+                <select value={form.speakMode} onChange={(e) => setForm({ ...form, speakMode: e.target.value as 'roundrobin' | 'race' })} aria-label="发言模式">
+                  <option value="roundrobin">轮流发言</option>
+                  <option value="race">抢答</option>
+                </select>
+              </label>
+            </div>
+            {roomFormError && <div className="error-text">{roomFormError}</div>}
+            <div className="form-row" style={{ justifyContent: 'flex-end', marginTop: 8 }}>
+              <button className="btn" onClick={() => setRoomModal(null)}>取消</button>
+              <button className="btn primary" onClick={() => void submitRoomModal()}>{roomModal.mode === 'create' ? '创建' : '保存'}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
