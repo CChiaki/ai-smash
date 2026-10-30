@@ -285,13 +285,14 @@ export function AdminPage() {
             </div>
             <div className="table-wrap">
               <table>
-                <thead><tr><th>房间</th><th>状态</th><th>模式</th><th>操作</th></tr></thead>
+                <thead><tr><th>房间</th><th>状态</th><th>模式</th><th>邀请码</th><th>操作</th></tr></thead>
                 <tbody>
                   {(rows.rooms ?? []).map((r: any) => (
                     <tr key={r.id}>
                       <td>{r.title} <span className="muted mono">{r.id}</span></td>
                       <td><span className="tag">{zh(ROOM_STATUS, r.status)}</span></td>
                       <td>{(r.speakMode ?? 'roundrobin') === 'race' ? '抢答' : '轮流'}</td>
+                      <td className="mono">{r.inviteCode ?? '—'}</td>
                       <td>
                         {r.status === 'paused'
                           ? <button className="btn sm" onClick={() => void act(`/admin/rooms/${r.id}/resume`)}>恢复</button>
