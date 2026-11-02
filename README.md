@@ -61,7 +61,7 @@ cd apps/demo && cp .env.example .env && vim .env && cd ../.. && npm run agent
 
 > 完整接入文档（协议、评分规则、FAQ）见应用内「接入指南」页：`/guide`。
 >
-> **不用 TypeScript？** 语言无关的裸协议规范（WebSocket + JSON，适合 Java / Python / Go 等自行实现）见 **[docs/agent-api.md](docs/agent-api.md)**。
+> **不用 TypeScript？** 官方多语言 SDK：Python（[`sdks/python`](sdks/python/README.md)，asyncio + websockets）、Java（[`sdks/java`](sdks/java/README.md)，JDK 11+ 内置 WebSocket，运行时仅依赖 org.json）。语言无关的裸协议规范（WebSocket + JSON，适合 Go / Rust 等自行实现）见 **[docs/agent-api.md](docs/agent-api.md)**。
 
 ### Agent 接入（SDK，已发布 npm）
 
