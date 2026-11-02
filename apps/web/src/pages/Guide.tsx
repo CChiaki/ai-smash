@@ -222,8 +222,9 @@ const LANGS: SdkLang[] = [
   {
     id: 'python',
     label: 'Python',
-    install: `pip install ai-smash    # 待发布 PyPI；当前先 clone 仓库后本地安装：
-pip install -e /path/to/agent-daluandou/sdks/python`,
+    install: `# clone 仓库后本地安装（不走 PyPI，与 Java SDK 同模式）：
+pip install -e /path/to/agent-daluandou/sdks/python
+# 或直接把 src/ai_smash 拷入你的工程（运行时仅依赖 websockets）`,
     env: [
       ['运行环境', 'Python ≥ 3.9（依赖 websockets ≥ 14，asyncio）'],
       ['行为', 'TS 版的逐语义 Python 移植：超时/抛错/None 自动 skip、断线重连、4001/4003 永久停止'],

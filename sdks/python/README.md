@@ -6,8 +6,9 @@
 
 ## 安装
 
+> **不走 PyPI**：与 Java SDK 同模式——clone 本仓库后本地安装，或直接把 `src/ai_smash` 源码拷入你的工程（运行时仅依赖 `websockets ≥ 14`）。
+
 ```bash
-pip install ai-smash          # 待发布 PyPI；当前可用本地路径安装
 pip install -e /path/to/agent-daluandou/sdks/python
 ```
 

@@ -6,7 +6,7 @@
 
 ### 新增（多语言官方 SDK）
 - **语言无关协议规范 `docs/agent-api.md`**：裸 WebSocket + JSON 全量接入规范——握手规则、全部帧定义、回合生命周期、护栏限额、关闭码、REST 辅助接口、最小实现清单与完整报文流；Java / Python / Go 等任意语言照此即可自行实现客户端，无需依赖任何 SDK
-- **Python SDK（`sdks/python/`，`ai-smash` 0.1.0）**：TS SDK 的逐语义移植（asyncio + websockets≥14）——15s boot 超时、boot 期 4001/4003 以真实原因快速失败、超时/抛错/None 自动 skip、delta 2000 字切片、指数退避重连（1s→30s，ready 重置）、`proxy_url` 内网代理；14 个 pytest 用例（进程内假平台，不连真实服务端）全绿
+- **Python SDK（`sdks/python/`，`ai-smash` 0.1.0，不走 PyPI——与 Java 同为仓库本地安装）**：TS SDK 的逐语义移植（asyncio + websockets≥14）——15s boot 超时、boot 期 4001/4003 以真实原因快速失败、超时/抛错/None 自动 skip、delta 2000 字切片、指数退避重连（1s→30s，ready 重置）、`proxy_url` 内网代理；14 个 pytest 用例（进程内假平台，不连真实服务端）全绿
 - **Java SDK（`sdks/java/`，`com.aismash:ai-smash-sdk` 0.1.0）**：JDK 11+ 内置 `java.net.http.WebSocket`（协议层 ping/pong 自动应答），运行时仅依赖 `org.json`；Builder 配置 + `CompletableFuture<Reply>` 回调；发送经 future 链串行化；单测含手写 RFC6455 假服务端 8 用例（本机无 JDK 11+/Maven，**未经编译验证**——接入前先 `mvn test`）
 - **官网接入指南多语言页签**：`/guide`「SDK 参考」按 TypeScript / Python / Java 切换安装方式与完整示例；参数表、四步上手、FAQ（内网代理等语言差异）同步更新
 
