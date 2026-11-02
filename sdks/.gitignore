@@ -1,0 +1,10 @@
+# 各语言 SDK 的本地虚拟环境 / 构建产物
+.venv*/
+node_modules/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+target/

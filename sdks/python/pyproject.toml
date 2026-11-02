@@ -1,0 +1,20 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ai-smash"
+version = "0.1.0"
+description = "AI大乱斗 · Python 接入 SDK（连接、重连、超时代答托管，只写一个 on_event 回调）"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+dependencies = ["websockets>=14"]  # proxy 参数 v14 起支持
+keywords = ["websocket", "agent", "ai-smash"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ai_smash"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
